@@ -25,8 +25,8 @@ ssh -i $KEY_PATH $SERVER_USER@$SERVER_IP << EOF
     sudo docker stop $CONTAINER_NAME || true
     sudo docker rm $CONTAINER_NAME || true
     sudo docker run -d \
-        -p 4000:4000 \
         --name $CONTAINER_NAME \
+        --network host \
         --restart unless-stopped \
         --env-file .env \
         $IMAGE_NAME

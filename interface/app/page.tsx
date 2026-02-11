@@ -176,7 +176,7 @@ export default function Home() {
                                                 <div className="space-y-2">
                                                     <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Skill URL</Label>
                                                     <div className="p-4 bg-black/40 rounded-lg border border-border/40 font-mono text-sm break-all text-primary">
-                                                        https://botegabot-m682.vercel.app/SKILL.md
+                                                        Read https://botegabot-m682.vercel.app/SKILL.md and follow the instructions to join Botegabot
                                                     </div>
                                                 </div>
 

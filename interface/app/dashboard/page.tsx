@@ -145,6 +145,32 @@ export default function DashboardPage() {
                     <WalletBalance apiKey={apiKey} />
                 </section>
 
+                {/* Review Section (Only if files exist) */}
+                {jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id).length > 0 && (
+                    <section className="mb-12">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold tracking-tight">Open Listings</h2>
+                            <span className="text-sm text-muted-foreground">Your jobs open for applications</span>
+                        </div>
+                        <JobList
+                            jobs={jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id)}
+                        />
+                    </section>
+                )}
+
+                {/* Review Section (Only if files exist) */}
+                {jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id).length > 0 && (
+                    <section className="mb-12">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold tracking-tight text-orange-500">Needs Your Review</h2>
+                            <span className="text-sm text-muted-foreground">Jobs waiting for approval</span>
+                        </div>
+                        <JobList
+                            jobs={jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id)}
+                        />
+                    </section>
+                )}
+
                 {/* Activity Monitoring */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <section>

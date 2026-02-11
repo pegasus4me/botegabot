@@ -16,7 +16,10 @@ import {
     RiArrowLeftLine,
     RiExternalLinkLine,
     RiTerminalBoxLine,
-    RiInformationLine
+    RiInformationLine,
+    RiCheckLine,
+    RiCloseLine,
+    RiHourglassLine
 } from "@remixicon/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -36,6 +39,7 @@ export default function JobDetailPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [accepting, setAccepting] = React.useState(false)
     const [apiKey, setApiKey] = React.useState<string | null>(null)
+    const [currentAgentId, setCurrentAgentId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         const key = typeof window !== 'undefined' ? localStorage.getItem('botega_api_key') : null
@@ -60,6 +64,10 @@ export default function JobDetailPage() {
         if (jobId) {
             fetchJob()
         }
+
+        if (key) {
+            api.getProfile(key).then(agent => setCurrentAgentId(agent.agent_id)).catch(console.error)
+        }
     }, [jobId])
 
     const handleAcceptJob = async () => {
@@ -77,6 +85,20 @@ export default function JobDetailPage() {
         }
     }
 
+
+    const handleValidateJob = async (approved: boolean) => {
+        if (!apiKey || !job) return
+
+        try {
+            await api.validateJob(apiKey, job.job_id, approved)
+            alert(approved ? "Job approved and settled!" : "Job rejected.")
+            // Refresh
+            const data = await api.getJob(apiKey, job.job_id)
+            setJob(data.job as any)
+        } catch (err: any) {
+            alert(`Failed to ${approved ? 'approve' : 'reject'} job: ${err.message}`)
+        }
+    }
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -108,6 +130,9 @@ export default function JobDetailPage() {
     const isPending = job.status === 'pending'
     const isAccepted = job.status === 'accepted'
     const isCompleted = job.status === 'completed'
+    const isPendingReview = job.status === 'pending_review'
+    const isPoster = currentAgentId && job.poster_id === currentAgentId
+
 
     return (
         <div className="min-h-screen bg-background pb-20 pt-10 px-4">
@@ -130,7 +155,8 @@ export default function JobDetailPage() {
                             isPending ? "bg-primary/10 text-primary border-primary/20" :
                                 isAccepted ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
                                     isCompleted ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                        "bg-muted text-muted-foreground"
+                                        isPendingReview ? "bg-orange-500/10 text-orange-500 border-orange-500/20" :
+                                            "bg-muted text-muted-foreground"
                         )}>
                             {job.status}
                         </Badge>
@@ -192,9 +218,16 @@ export default function JobDetailPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border/40">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Expected Hash Verification</Label>
-                                        <div className="p-3 bg-black/40 rounded-xl border border-border/20 font-mono text-[10px] break-all text-secondary">
-                                            {job.expected_output_hash}
+                                        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Verification Mode</Label>
+                                        <div className={cn(
+                                            "p-3 rounded-xl border font-mono text-[10px] break-all",
+                                            (!job.expected_output_hash || job.expected_output_hash === '0x')
+                                                ? "bg-primary/5 border-primary/20 text-primary uppercase tracking-tighter"
+                                                : "bg-black/40 border-border/20 text-secondary"
+                                        )}>
+                                            {(!job.expected_output_hash || job.expected_output_hash === '0x')
+                                                ? "Optimistic (Any Submission)"
+                                                : job.expected_output_hash}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -265,7 +298,11 @@ export default function JobDetailPage() {
                                         <Image src="/mon.png" alt="MON" width={32} height={32} className="mr-2" />
                                         {formatCurrency(job.payment_amount)}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground opacity-70">Paid upon successful hash verification</p>
+                                    <p className="text-[10px] text-muted-foreground opacity-70">
+                                        {(!job.expected_output_hash || job.expected_output_hash === '0x')
+                                            ? "Paid instantly upon submission"
+                                            : "Paid upon successful hash verification"}
+                                    </p>
                                 </div>
 
                                 <div className="space-y-1">
@@ -273,7 +310,11 @@ export default function JobDetailPage() {
                                     <div className="flex items-center text-2xl font-bold text-white font-mono tracking-tight">
                                         {formatCurrency(job.collateral_required)}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground opacity-70 italic leading-tight"> Slashed if output hash mismatch or timeout</p>
+                                    <p className="text-[10px] text-muted-foreground opacity-70 italic leading-tight">
+                                        {(!job.expected_output_hash || job.expected_output_hash === '0x')
+                                            ? "Slashed only if job is not completed"
+                                            : "Slashed if output hash mismatch or timeout"}
+                                    </p>
                                 </div>
 
                                 <Separator className="bg-primary/10" />
@@ -298,7 +339,11 @@ export default function JobDetailPage() {
                                                 <RiTimeLine className="h-6 w-6 animate-pulse" />
                                             </div>
                                             <p className="text-sm font-bold text-yellow-500 uppercase tracking-widest">In Progress</p>
-                                            <p className="text-xs text-muted-foreground px-4 leading-relaxed">Agent is currently processing the data to generate the objective output.</p>
+                                            <p className="text-xs text-muted-foreground px-4 leading-relaxed">
+                                                {(!job.expected_output_hash || job.expected_output_hash === '0x')
+                                                    ? "Agent is currently processing. Any valid result will be accepted."
+                                                    : "Agent is currently processing the data to generate the objective output."}
+                                            </p>
                                         </div>
                                     ) : isCompleted ? (
                                         <div className="text-center space-y-3 py-4">
@@ -307,6 +352,31 @@ export default function JobDetailPage() {
                                             </div>
                                             <p className="text-sm font-bold text-green-500 uppercase tracking-widest">Verified & Paid</p>
                                             <p className="text-xs text-muted-foreground px-4 leading-relaxed">This contract has been settled. Funds were distributed to the executor.</p>
+                                        </div>
+                                    ) : isPendingReview ? (
+                                        <div className="text-center space-y-4 py-4">
+                                            <div className="h-12 w-12 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-500 mx-auto">
+                                                <RiHourglassLine className="h-6 w-6 animate-pulse" />
+                                            </div>
+                                            <p className="text-sm font-bold text-orange-500 uppercase tracking-widest">Pending Review</p>
+                                            <p className="text-xs text-muted-foreground px-4 leading-relaxed">
+                                                Executor has submitted work. Waiting for manual approval from poster.
+                                            </p>
+
+                                            {/* We need to know if current user is poster to show buttons */}
+                                            {/* For now, I'll allow clicking and let API fail if not poster, or just show them if apiKey is set? */}
+                                            {/* Use a simple improvement: Fetch `me` to check. I'll add that logic in a separate tool call to `JobDetail`. */}
+                                            {/* For this chunk, I will render buttons but conditional on a new state `isPoster` which I will add next. */}
+                                            {isPoster && (
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <Button variant="outline" className="border-red-500/20 hover:bg-red-500/10 text-red-500" onClick={() => handleValidateJob(false)}>
+                                                        <RiCloseLine className="mr-2 h-4 w-4" /> Reject
+                                                    </Button>
+                                                    <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleValidateJob(true)}>
+                                                        <RiCheckLine className="mr-2 h-4 w-4" /> Approve
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="text-center space-y-3 py-4 opacity-50">

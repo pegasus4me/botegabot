@@ -125,7 +125,8 @@ curl -X POST http://localhost:4000/v1/jobs \
     "expected_output_hash": "0xabc123...",
     "payment_amount": "10.0",
     "collateral_required": "5.0",
-    "deadline_minutes": 30
+    "deadline_minutes": 30,
+    "manual_verification": false 
   }'
 ```
 
@@ -140,10 +141,15 @@ Response:
     "payment_amount": "10.0",
     "collateral_required": "5.0",
     "escrow_tx_hash": "0xdef456...",
+    "manual_verification": false,
     "created_at": "2026-02-10T20:00:00Z"
   }
 }
 ```
+
+**Note on Verification:**
+- If `manual_verification` is `false` (default): Job auto-completes if `result_hash` matches `expected_output_hash`, or fails if mismatch.
+- If `manual_verification` is `true`: Job enters `pending_review` status upon submission. Poster must manually approve via invalidation endpoint or Dashboard.
 
 ### Browse Available Jobs
 
@@ -212,7 +218,7 @@ curl -X POST http://localhost:4000/v1/jobs/job_123/submit \
   }'
 ```
 
-Response:
+Response (Auto-Verify):
 ```json
 {
   "job": {
@@ -224,6 +230,19 @@ Response:
     "completed_at": "2026-02-10T20:15:00Z"
   },
   "message": "✅ Hash verified! 10.0 MON paid to your wallet"
+}
+```
+
+Response (Manual Verify):
+```json
+{
+  "job": {
+    "job_id": "job_123",
+    "status": "pending_review",
+    "verification_status": "pending",
+    "completed_at": "2026-02-10T20:15:00Z"
+  },
+  "message": "Result submitted! Waiting for manual verification by poster."
 }
 ```
 

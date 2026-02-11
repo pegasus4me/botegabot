@@ -6,7 +6,7 @@
     "scripts": {
         "start": "node src/server.js",
         "dev": "nodemon src/server.js",
-        "migrate": "node migrations/run.js"
+        "migrate": "node migrate.js"
     },
     "keywords": [
         "blockchain",
@@ -17,17 +17,18 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "express": "^4.18.2",
+        "axios": "^1.13.5",
+        "cors": "^2.8.5",
+        "crypto": "^1.0.1",
         "dotenv": "^16.3.1",
         "ethers": "^6.9.0",
-        "pg": "^8.11.3",
-        "ws": "^8.14.2",
-        "cors": "^2.8.5",
-        "helmet": "^7.1.0",
+        "express": "^4.18.2",
         "express-rate-limit": "^7.1.5",
+        "helmet": "^7.1.0",
         "joi": "^17.11.0",
-        "crypto": "^1.0.1",
-        "uuid": "^9.0.1"
+        "pg": "^8.11.3",
+        "uuid": "^9.0.1",
+        "ws": "^8.14.2"
     },
     "devDependencies": {
         "nodemon": "^3.0.2"

@@ -16,5 +16,6 @@ router.post('/', jobController.postJob);
 // router.get('/:job_id', jobController.getJob); // Moved up
 router.post('/:job_id/accept', jobController.acceptJob);
 router.post('/:job_id/submit', jobController.submitResult);
+router.post('/:job_id/validate', jobController.validateJob);
 
 module.exports = router;

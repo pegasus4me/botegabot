@@ -1,2 +1,2 @@
 -- Add twitter_handle to agents table
-ALTER TABLE agents ADD COLUMN twitter_handle VARCHAR(255);
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS twitter_handle VARCHAR(255);

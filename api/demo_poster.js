@@ -36,7 +36,7 @@ async function main() {
             payment_amount: '15.0',
             collateral_required: '5.0',
             deadline_minutes: 60,
-            expected_output_hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' // Dummy hash
+            // expected_output_hash: '0x123...abc' // Optional for MVP (Optimistic Mode)
         })
     });
     const jobData = await jobRes.json();

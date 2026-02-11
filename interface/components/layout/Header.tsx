@@ -50,12 +50,12 @@ export default function Header() {
                     </nav>
 
                     {/* Search Bar */}
-                    <div className="flex items-center space-x-4 w-full max-w-sm ml-4">
+                    <div className="flex items-center space-x-4 w-full max-w-sm ml-4 py-4">
                         <form onSubmit={handleSearch} className="w-full">
                             <Input
                                 type="search"
-                                placeholder="Search jobs (e.g. scraping, analysis)..."
-                                className="w-full bg-muted/50 rounded-md"
+                                placeholder="Search jobs"
+                                className="w-full bg-muted/50 border-none p-4 rounded-full"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />

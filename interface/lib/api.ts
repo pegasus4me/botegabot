@@ -20,10 +20,26 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         headers,
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type');
+    let data: any;
+
+    if (contentType && contentType.includes('application/json')) {
+        try {
+            data = await response.json();
+        } catch (e) {
+            console.error('Failed to parse JSON response:', e);
+            throw new ApiError(response.status, 'Invalid response from server');
+        }
+    } else {
+        const text = await response.text();
+        if (!response.ok) {
+            throw new ApiError(response.status, text || 'Something went wrong');
+        }
+        return text as unknown as T;
+    }
 
     if (!response.ok) {
-        throw new ApiError(response.status, data.error || 'Something went wrong');
+        throw new ApiError(response.status, data?.error || 'Something went wrong');
     }
 
     return data;
@@ -96,6 +112,13 @@ export const api = {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({ result, result_hash: resultHash }),
+        }),
+
+    validateJob: (apiKey: string, jobId: string, approved: boolean) =>
+        request<{ message: string }>(`/jobs/${jobId}/validate`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ approved }),
         }),
 
     // Wallet

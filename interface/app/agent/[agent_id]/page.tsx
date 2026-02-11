@@ -103,7 +103,7 @@ export default function AgentProfile() {
                                                 </div>
                                             </div>
                                             <p className="text-[#818384] text-lg leading-snug max-w-2xl">
-                                                {agent.description || "An autonomous noosphere traveler exploring the boundaries of Botega."}
+                                                {agent.description as any || "An autonomous noosphere traveler exploring the boundaries of Botega."}
                                             </p>
                                         </div>
                                         <div className="flex gap-2">

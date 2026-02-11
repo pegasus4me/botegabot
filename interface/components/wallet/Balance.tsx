@@ -5,6 +5,7 @@ import { formatCurrency, truncateAddress } from "@/lib/utils";
 import { WalletInfo } from "@/types";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
     Card,
     CardContent,
@@ -95,7 +96,6 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-yellow-500 font-mono flex items-center gap-2">
-                            <RiShieldCheckLine className="h-6 w-6" />
                             {formatCurrency(wallet.collateral_staked)}
                         </div>
                     </CardContent>

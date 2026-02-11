@@ -16,19 +16,20 @@ async function postJob(req, res) {
             expected_output_hash,
             payment_amount,
             collateral_required,
-            deadline_minutes
+            deadline_minutes,
+            manual_verification = false
         } = req.body;
 
         // Validation
-        if (!title || !capability_required || !description || !expected_output_hash || !payment_amount || !collateral_required || !deadline_minutes) {
+        if (!title || !capability_required || !description || !payment_amount || !collateral_required || !deadline_minutes) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        if (!isValidHash(expected_output_hash)) {
+        if (expected_output_hash && !isValidHash(expected_output_hash)) {
             return res.status(400).json({ error: 'Invalid hash format' });
         }
 
-        if (parseFloat(payment_amount) <= 0 || parseFloat(collateral_required) <= 0) {
+        if ((parseFloat(payment_amount) <= 0 || parseFloat(collateral_required) <= 0) && !manual_verification) {
             return res.status(400).json({ error: 'Payment and collateral must be greater than 0' });
         }
 
@@ -43,8 +44,8 @@ async function postJob(req, res) {
             `INSERT INTO jobs (
         job_id, title, poster_id, capability_required, description, requirements,
         expected_output_hash, payment_amount, collateral_required,
-        deadline_minutes, deadline, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        deadline_minutes, deadline, status, manual_verification
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
             [
                 jobId,
@@ -53,12 +54,13 @@ async function postJob(req, res) {
                 capability_required,
                 description,
                 JSON.stringify(requirements || {}),
-                expected_output_hash,
+                expected_output_hash || '0x',
                 payment_amount,
                 collateral_required,
                 deadline_minutes,
                 deadline,
-                'pending'
+                'pending',
+                manual_verification
             ]
         );
 
@@ -67,7 +69,7 @@ async function postJob(req, res) {
         // Post job on-chain (async)
         transactionService.postJobOnChain(req.agentId, {
             capability: capability_required,
-            expectedHash: expected_output_hash,
+            expectedHash: expected_output_hash || '0x',
             payment: payment_amount,
             collateral: collateral_required,
             deadlineMinutes: deadline_minutes
@@ -95,6 +97,7 @@ async function postJob(req, res) {
                 payment_amount: job.payment_amount,
                 collateral_required: job.collateral_required,
                 deadline: job.deadline,
+                manual_verification: job.manual_verification,
                 created_at: job.created_at
             }
         });
@@ -281,7 +284,43 @@ async function submitResult(req, res) {
         }
 
         // Check if hash matches expected
-        const hashMatch = result_hash === job.expected_output_hash;
+        // Optimistic Mode: If expected hash is missing or 0x, any submission matches
+        const isOptimistic = !job.expected_output_hash || job.expected_output_hash === '0x';
+        const hashMatch = isOptimistic || result_hash === job.expected_output_hash;
+
+        // Manual Verification Logic
+        if (job.manual_verification) {
+            await db.query(
+                `UPDATE jobs SET 
+            submitted_hash = $1, 
+            status = 'pending_review', 
+            updated_at = NOW()
+           WHERE job_id = $2`,
+                [result_hash, job_id]
+            );
+
+            // Notify poster
+            const wsService = require('../services/websocketService');
+            // Assuming we have a notifyJobsubmitted or similar, otherwise just reuse existing or create new?
+            // Existing notifications seem to be: broadcastJobPosted, notifyJobAccepted, notifyPaymentReceived, notifyJobCompleted
+            // We should ideally add notifyJobSubmittedForReview. For now let's just log it or maybe assume poster checks dashboard.
+            // But let's verify if there is a method we can use or if we should add it. 
+            // I will assume notifyJobSubmittedForReview doesn't exist yet, so I might need to add it later.
+            // For now, I'll proceed without a specific WS notification or just skip it.
+            // Actually, let's look at `wsService` usage. `wsService.notifyJobAccepted(job, req.agentId)`
+
+            res.json({
+                job: {
+                    job_id: job.job_id,
+                    status: 'pending_review',
+                    verification_status: 'pending',
+                    completed_at: new Date()
+                },
+                message: 'Result submitted! Waiting for manual verification by poster.'
+            });
+            return;
+        }
+
         const newStatus = hashMatch ? 'completed' : 'failed';
 
         // Update job
@@ -508,11 +547,114 @@ async function getRecentJobs(req, res) {
     }
 }
 
+
+/**
+ * Validate a job (Manual verification)
+ */
+async function validateJob(req, res) {
+    try {
+        const { job_id } = req.params;
+        const { approved } = req.body;
+
+        // Get job
+        const jobResult = await db.query(
+            'SELECT * FROM jobs WHERE job_id = $1',
+            [job_id]
+        );
+
+        if (jobResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
+
+        const job = jobResult.rows[0];
+
+        // Validation
+        if (job.poster_id !== req.agentId) {
+            return res.status(403).json({ error: 'Only the poster can validate this job' });
+        }
+
+        if (job.status !== 'pending_review') {
+            return res.status(400).json({ error: 'Job is not pending review' });
+        }
+
+        if (approved) {
+            // Determine success based on approval
+            const finalStatus = 'completed';
+
+            // Mark as completed in DB
+            await db.query(
+                `UPDATE jobs SET 
+                    status = $1, 
+                    completed_at = NOW(),
+                    updated_at = NOW()
+                 WHERE job_id = $2`,
+                [finalStatus, job_id]
+            );
+
+            // Update agent stats (Positive)
+            await db.query(
+                `UPDATE agents SET
+                    total_jobs_completed = total_jobs_completed + 1,
+                    total_earned = total_earned + $1,
+                    reputation_score = reputation_score + 5
+                 WHERE agent_id = $2`,
+                [job.payment_amount, job.executor_id]
+            );
+
+            await db.query(
+                `UPDATE agents SET total_spent = total_spent + $1 WHERE agent_id = $2`,
+                [job.payment_amount, job.poster_id]
+            );
+
+            // Trigger on-chain settlement
+            if (job.chain_job_id && job.submitted_hash) {
+                transactionService.submitResultOnChain(job.executor_id, job.chain_job_id, job.submitted_hash)
+                    .then(async (txResult) => {
+                        await db.query(
+                            `UPDATE jobs SET payment_tx_hash = $1 WHERE job_id = $2`,
+                            [txResult.tx.hash, job_id]
+                        );
+                        console.log(`✅ Job ${job_id} settlement triggered on-chain: ${txResult.tx.hash}`);
+                    })
+                    .catch(err => console.error(`❌ Failed to trigger settlement on-chain:`, err));
+            }
+
+            res.json({ message: 'Job approved and settled successfully' });
+
+        } else {
+            // Reject - Mark as failed? Or back to accepted?
+            // Let's mark as failed for now, implies slashing.
+            const finalStatus = 'failed';
+
+            await db.query(
+                `UPDATE jobs SET 
+                    status = $1, 
+                    updated_at = NOW()
+                 WHERE job_id = $2`,
+                [finalStatus, job_id]
+            );
+
+            // Negative reputation
+            await db.query(
+                'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
+                [job.executor_id]
+            );
+
+            res.json({ message: 'Job rejected.' });
+        }
+
+    } catch (error) {
+        console.error('Validate job error:', error);
+        res.status(500).json({ error: 'Failed to validate job' });
+    }
+}
+
 module.exports = {
     postJob,
     getAvailableJobs,
     acceptJob,
     submitResult,
     getJob,
-    getRecentJobs
+    getRecentJobs,
+    validateJob
 };

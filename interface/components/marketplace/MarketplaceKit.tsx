@@ -43,115 +43,114 @@ export function OfferCard({
     className?: string
 }) {
     return (
-        <Link href={`/jobs/${job.job_id}`} className="block">
-            <Card className={cn(
-                "group relative overflow-hidden transition-all rounded-xl duration-300 hover:shadow-xl hover:-translate-y-1 bg-transparent backdrop-blur-sm h-full",
-                className
-            )}>
-                {/* Gradient accent */}
-                <div className="absolute top-0 left-0 w-full h-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Card className={cn(
+            "group relative overflow-hidden transition-all rounded-xl duration-300 hover:shadow-xl hover:-translate-y-1 bg-transparent backdrop-blur-sm h-full",
+            className
+        )}>
+            <Link href={`/jobs/${job.job_id}`} className="absolute inset-0 z-0" />
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 w-full h-1 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start mb-2">
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[10px] uppercase tracking-wider">
-                            {job.capability_required}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground font-mono flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/20">
-                            <RiUser6Line className="h-3 w-3 text-primary" />
-                            <span className="opacity-70">Posted by</span>
+            <CardHeader className="pb-3">
+                <div className="flex justify-between items-start mb-2">
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-mono text-[10px] uppercase tracking-wider">
+                        {job.capability_required}
+                    </Badge>
+                    <div className="text-xs text-muted-foreground font-mono flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-md border border-border/20 relative z-10">
+                        <RiUser6Line className="h-3 w-3 text-primary" />
+                        <span className="opacity-70">Posted by</span>
+                        <Link
+                            href={`/agent/${job.poster_id}`}
+                            className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {(job as any).poster_name || job.poster_id?.slice(0, 8) || "Unknown"}
+                        </Link>
+                    </div>
+                </div>
+                <CardTitle className="text-xl line-clamp-1 group-hover:text-primary transition-colors">
+                    {job.title || job.description}
+                </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <div className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Reward</div>
+                        <div className="flex items-center text-lg text-white font-mono">
+                            <Image src="/mon.png" alt="MON" width={28} height={28} className="mr-1.5" />
+                            {formatCurrency(job.payment_amount)}
+                        </div>
+                    </div>
+                    <div className="space-y-1">
+                        <div className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Collateral</div>
+                        <div className="flex items-center text-lg text-white font-mono">
+                            {formatCurrency(job.collateral_required)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs text-muted-foreground  pt-4">
+                    <div className="flex items-center gap-1">
+                        <RiTimerLine className="h-3.5 w-3.5" />
+                        {job.deadline_minutes}m Deadline
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <RiTimeLine className="h-3.5 w-3.5" />
+                        Posted {new Date(job.created_at).toLocaleDateString()}
+                    </div>
+                </div>
+            </CardContent>
+
+            <CardFooter className="pt-0 border-none">
+                <div className={cn(
+                    "w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-all duration-500",
+                    job.status === 'pending' ? "text-primary" :
+                        job.status === 'accepted' ? "text-yellow-500" :
+                            job.status === 'completed' ? "text-green-500" :
+                                "text-muted-foreground"
+                )}>
+                    {job.status === 'pending' && (
+                        <>
+                            <RiTimerLine className="h-4 w-4 animate-pulse" />
+                            <span>Work request still open</span>
+                        </>
+                    )}
+                    {job.status === 'accepted' && (
+                        <>
+                            <RiCheckboxCircleLine className="h-4 w-4 text-yellow-500" />
+                            <span>Claimed by </span>
                             <Link
-                                href={`/agent/${job.poster_id}`}
-                                className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer relative z-10"
+                                href={`/agent/${job.executor_id}`}
+                                className="font-bold text-yellow-500 hover:underline ml-1 relative z-10"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                {(job as any).poster_name || job.poster_id?.slice(0, 8) || "Unknown"}
+                                {(job as any).executor_name || job.executor_id?.slice(0, 8) || "Agent"}
                             </Link>
-                        </div>
-                    </div>
-                    <CardTitle className="text-xl line-clamp-1 group-hover:text-primary transition-colors">
-                        {job.title || job.description}
-                    </CardTitle>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <div className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Reward</div>
-                            <div className="flex items-center text-lg text-white font-mono">
-                                <Image src="/mon.png" alt="MON" width={28} height={28} className="mr-1.5" />
-                                {formatCurrency(job.payment_amount)}
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <div className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Collateral</div>
-                            <div className="flex items-center text-lg text-white font-mono">
-                                {formatCurrency(job.collateral_required)}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground  pt-4">
-                        <div className="flex items-center gap-1">
-                            <RiTimerLine className="h-3.5 w-3.5" />
-                            {job.deadline_minutes}m Deadline
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <RiTimeLine className="h-3.5 w-3.5" />
-                            Posted {new Date(job.created_at).toLocaleDateString()}
-                        </div>
-                    </div>
-                </CardContent>
-
-                <CardFooter className="pt-0 border-none">
-                    <div className={cn(
-                        "w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-all duration-500",
-                        job.status === 'pending' ? "text-primary" :
-                            job.status === 'accepted' ? "text-yellow-500" :
-                                job.status === 'completed' ? "text-green-500" :
-                                    "text-muted-foreground"
-                    )}>
-                        {job.status === 'pending' && (
-                            <>
-                                <RiTimerLine className="h-4 w-4 animate-pulse" />
-                                <span>Work request still open</span>
-                            </>
-                        )}
-                        {job.status === 'accepted' && (
-                            <>
-                                <RiCheckboxCircleLine className="h-4 w-4 text-yellow-500" />
-                                <span>Claimed by </span>
-                                <Link
-                                    href={`/agent/${job.executor_id}`}
-                                    className="font-bold text-yellow-500 hover:underline ml-1 relative z-10"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    {(job as any).executor_name || job.executor_id?.slice(0, 8) || "Agent"}
-                                </Link>
-                            </>
-                        )}
-                        {job.status === 'completed' && (
-                            <>
-                                <RiCheckboxCircleLine className="h-4 w-4 text-green-500" />
-                                <span>Completed by </span>
-                                <Link
-                                    href={`/agent/${job.executor_id}`}
-                                    className="font-bold text-green-500 hover:underline ml-1 relative z-10"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    {(job as any).executor_name || job.executor_id?.slice(0, 8) || "Agent"}
-                                </Link>
-                            </>
-                        )}
-                        {job.status !== 'pending' && job.status !== 'accepted' && job.status !== 'completed' && (
-                            <>
-                                <RiErrorWarningLine className="h-4 w-4" />
-                                <span>Status: {job.status}</span>
-                            </>
-                        )}
-                    </div>
-                </CardFooter>
-            </Card>
-        </Link>
+                        </>
+                    )}
+                    {job.status === 'completed' && (
+                        <>
+                            <RiCheckboxCircleLine className="h-4 w-4 text-green-500" />
+                            <span>Completed by </span>
+                            <Link
+                                href={`/agent/${job.executor_id}`}
+                                className="font-bold text-green-500 hover:underline ml-1 relative z-10"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {(job as any).executor_name || job.executor_id?.slice(0, 8) || "Agent"}
+                            </Link>
+                        </>
+                    )}
+                    {job.status !== 'pending' && job.status !== 'accepted' && job.status !== 'completed' && (
+                        <>
+                            <RiErrorWarningLine className="h-4 w-4" />
+                            <span>Status: {job.status}</span>
+                        </>
+                    )}
+                </div>
+            </CardFooter>
+        </Card>
     )
 }
 

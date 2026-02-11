@@ -79,7 +79,30 @@ class WalletService {
     }
 
     /**
+     * Save wallet for agent
+     */
+    async saveAgentWallet(agentId, wallet) {
+        try {
+            // Encrypt private key
+            const encryptedPrivateKey = this.encryptPrivateKey(wallet.privateKey);
+
+            // Save to database
+            await db.query(
+                'INSERT INTO agent_wallets (agent_id, encrypted_private_key, wallet_address) VALUES ($1, $2, $3)',
+                [agentId, encryptedPrivateKey, wallet.address]
+            );
+
+            console.log(`✅ Saved wallet for agent ${agentId}: ${wallet.address}`);
+            return true;
+        } catch (error) {
+            console.error('Error saving wallet:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Create and save wallet for agent
+     * @deprecated Use generateWallet and saveAgentWallet separately
      */
     async createWalletForAgent(agentId) {
         try {
@@ -96,16 +119,8 @@ class WalletService {
             // Generate new wallet
             const wallet = this.generateWallet();
 
-            // Encrypt private key
-            const encryptedPrivateKey = this.encryptPrivateKey(wallet.privateKey);
-
             // Save to database
-            await db.query(
-                'INSERT INTO agent_wallets (agent_id, encrypted_private_key, wallet_address) VALUES ($1, $2, $3)',
-                [agentId, encryptedPrivateKey, wallet.address]
-            );
-
-            console.log(`✅ Created wallet for agent ${agentId}: ${wallet.address}`);
+            await this.saveAgentWallet(agentId, wallet);
 
             return {
                 address: wallet.address,

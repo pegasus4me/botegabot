@@ -9,7 +9,7 @@ const transactionService = require('../services/transactionService');
  */
 async function registerAgent(req, res) {
     try {
-        const { name, description, capabilities } = req.body;
+        const { name, description, capabilities, twitter_handle } = req.body;
 
         // Validation
         if (!name || !capabilities) {
@@ -24,15 +24,18 @@ async function registerAgent(req, res) {
         const agentId = generateAgentId();
         const apiKey = generateApiKey();
 
-        // Create custodial wallet for agent
-        const wallet = await walletService.createWalletForAgent(agentId);
+        // Create custodial wallet for agent (in memory first)
+        const wallet = walletService.generateWallet();
 
-        // Insert into database
+        // Insert into database FIRST (to satisfy FK for wallet)
         await db.query(
-            `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-            [agentId, apiKey, wallet.address, name, description || '', capabilities]
+            `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities, twitter_handle)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [agentId, apiKey, wallet.address, name, description || '', capabilities, twitter_handle || null]
         );
+
+        // Now save the wallet (which references agent_id)
+        await walletService.saveAgentWallet(agentId, wallet);
 
         // Insert into api_keys table
         await db.query(
@@ -53,6 +56,7 @@ async function registerAgent(req, res) {
                 wallet_address: wallet.address,
                 mnemonic: wallet.mnemonic,
                 capabilities,
+                twitter_handle,
                 reputation_score: 0
             },
             important: '⚠️ SAVE YOUR API KEY AND MNEMONIC! They will not be shown again.',
@@ -61,7 +65,7 @@ async function registerAgent(req, res) {
 
     } catch (error) {
         console.error('Register agent error:', error);
-        res.status(500).json({ error: 'Failed to register agent' });
+        res.status(500).json({ error: 'Failed to register agent', details: error.message, stack: error.stack });
     }
 }
 
@@ -112,7 +116,7 @@ async function searchAgents(req, res) {
     try {
         const { capability, min_reputation } = req.query;
 
-        let query = 'SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed FROM agents WHERE is_active = true';
+        let query = 'SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle FROM agents WHERE is_active = true';
         const params = [];
 
         if (capability) {
@@ -134,7 +138,9 @@ async function searchAgents(req, res) {
             name: row.name,
             capabilities: row.capabilities,
             reputation_score: row.reputation_score,
-            total_jobs_completed: row.total_jobs_completed
+            total_jobs_completed: row.total_jobs_completed,
+            total_earned: row.total_earned,
+            twitter_handle: row.twitter_handle
         }));
 
         res.json({ agents });
@@ -145,8 +151,195 @@ async function searchAgents(req, res) {
     }
 }
 
+/**
+ * Get recent active agents (public)
+ */
+async function getRecentAgents(req, res) {
+    try {
+        const result = await db.query(
+            `SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle, created_at 
+             FROM agents 
+             WHERE is_active = true 
+             ORDER BY created_at DESC 
+             LIMIT 10`
+        );
+
+        const agents = result.rows.map(row => ({
+            agent_id: row.agent_id,
+            name: row.name,
+            capabilities: row.capabilities,
+            reputation_score: row.reputation_score,
+            total_jobs_completed: row.total_jobs_completed,
+            total_earned: row.total_earned,
+            twitter_handle: row.twitter_handle,
+            created_at: row.created_at
+        }));
+
+        res.json({ agents });
+
+    } catch (error) {
+        console.error('Get recent agents error:', error);
+        require('fs').writeFileSync('error.log', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        res.status(500).json({ error: 'Failed to get recent agents' });
+    }
+}
+
+/**
+ * Get currently online agents
+ */
+async function getOnlineAgents(req, res) {
+    try {
+        const wsService = require('../services/websocketService');
+        const onlineIds = wsService.getOnlineAgentIds();
+
+        if (onlineIds.length === 0) {
+            return res.json({ agents: [] });
+        }
+
+        const result = await db.query(
+            `SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle, created_at 
+             FROM agents 
+             WHERE agent_id = ANY($1) AND is_active = true`,
+            [onlineIds]
+        );
+
+        const agents = result.rows.map(row => ({
+            agent_id: row.agent_id,
+            name: row.name,
+            capabilities: row.capabilities,
+            reputation_score: row.reputation_score,
+            total_jobs_completed: row.total_jobs_completed,
+            total_earned: row.total_earned,
+            twitter_handle: row.twitter_handle,
+            created_at: row.created_at
+        }));
+
+        res.json({ agents });
+
+    } catch (error) {
+        console.error('Get online agents error:', error);
+        res.status(500).json({ error: 'Failed to get online agents' });
+    }
+}
+
+/**
+ * Get agents active in the last 24 hours
+ */
+async function getDailyActiveAgents(req, res) {
+    try {
+        const result = await db.query(
+            `SELECT a.agent_id, a.name, a.capabilities, a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+             FROM agents a
+             LEFT JOIN api_keys ak ON a.agent_id = ak.agent_id
+             WHERE a.is_active = true 
+             AND (
+                a.created_at >= NOW() - INTERVAL '24 hours' OR 
+                ak.last_used_at >= NOW() - INTERVAL '24 hours'
+             )
+             ORDER BY COALESCE(ak.last_used_at, a.created_at) DESC
+             LIMIT 50`
+        );
+
+        const agents = result.rows.map(row => ({
+            agent_id: row.agent_id,
+            name: row.name,
+            capabilities: row.capabilities,
+            reputation_score: row.reputation_score,
+            total_jobs_completed: row.total_jobs_completed,
+            total_earned: row.total_earned,
+            twitter_handle: row.twitter_handle,
+            created_at: row.created_at
+        }));
+
+        res.json({ agents });
+
+    } catch (error) {
+        console.error('Get daily active agents error:', error);
+        res.status(500).json({ error: 'Failed to get daily active agents' });
+    }
+}
+
+/**
+ * Get public profile of an agent
+ */
+async function getAgentPublicProfile(req, res) {
+    try {
+        const { agentId } = req.params;
+
+        const result = await db.query(
+            `SELECT agent_id, name, wallet_address, description, capabilities, 
+              reputation_score, total_jobs_completed, total_jobs_posted,
+              total_earned, total_spent, is_active, created_at, twitter_handle
+       FROM agents WHERE agent_id = $1`,
+            [agentId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Agent not found' });
+        }
+
+        const agent = result.rows[0];
+
+        res.json({ agent });
+
+    } catch (error) {
+        console.error('Get public profile error:', error);
+        res.status(500).json({ error: 'Failed to get agent public profile' });
+    }
+}
+
+/**
+ * Get job history for an agent
+ */
+async function getAgentHistory(req, res) {
+    try {
+        const { agentId } = req.params;
+
+        const result = await db.query(
+            `SELECT j.*, a.name as poster_name, e.name as executor_name
+             FROM jobs j
+             LEFT JOIN agents a ON j.poster_id = a.agent_id
+             LEFT JOIN agents e ON j.executor_id = e.agent_id
+             WHERE j.poster_id = $1 OR j.executor_id = $1
+             ORDER BY j.updated_at DESC
+             LIMIT 50`,
+            [agentId]
+        );
+
+        const jobs = result.rows.map(row => ({
+            job_id: row.job_id,
+            title: row.title,
+            poster_id: row.poster_id,
+            poster_name: row.poster_name,
+            executor_id: row.executor_id,
+            executor_name: row.executor_name,
+            capability_required: row.capability_required,
+            description: row.description,
+            payment_amount: row.payment_amount,
+            collateral_required: row.collateral_required,
+            deadline_minutes: row.deadline_minutes,
+            status: row.status,
+            result_hash: row.result_hash,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            completed_at: row.completed_at
+        }));
+
+        res.json({ jobs });
+
+    } catch (error) {
+        console.error('Get agent history error:', error);
+        res.status(500).json({ error: 'Failed to get agent history' });
+    }
+}
+
 module.exports = {
     registerAgent,
     getMe,
-    searchAgents
+    searchAgents,
+    getRecentAgents,
+    getOnlineAgents,
+    getDailyActiveAgents,
+    getAgentPublicProfile,
+    getAgentHistory
 };

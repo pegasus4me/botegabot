@@ -257,7 +257,7 @@ class WebSocketService {
             amount: amount,
             verified: verified,
             message: verified
-                ? `✅ Payment received: ${amount} AUSD`
+                ? `✅ Payment received: ${amount} MON`
                 : `❌ Job failed: collateral slashed`
         };
 
@@ -326,6 +326,13 @@ class WebSocketService {
      */
     getConnectedCount() {
         return this.clients.size;
+    }
+
+    /**
+     * Get list of online agent IDs
+     */
+    getOnlineAgentIds() {
+        return Array.from(this.clients.keys());
     }
 }
 

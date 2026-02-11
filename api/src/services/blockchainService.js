@@ -35,14 +35,14 @@ async function isAgentRegistered(walletAddress) {
 }
 
 /**
- * Get AUSD balance for a wallet
+ * Get MON balance for a wallet
  */
-async function getAusdBalance(walletAddress) {
+async function getMonBalance(walletAddress) {
     try {
-        const balance = await blockchain.ausdToken.balanceOf(walletAddress);
+        const balance = await blockchain.provider.getBalance(walletAddress);
         return ethers.formatEther(balance);
     } catch (error) {
-        throw new Error(`Failed to get AUSD balance: ${error.message}`);
+        throw new Error(`Failed to get MON balance: ${error.message}`);
     }
 }
 
@@ -131,7 +131,7 @@ function listenToEvents(eventHandlers) {
 module.exports = {
     getAgentInfo,
     isAgentRegistered,
-    getAusdBalance,
+    getMonBalance,
     getJobFromChain,
     listenToEvents
 };

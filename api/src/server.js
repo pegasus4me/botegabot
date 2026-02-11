@@ -45,7 +45,10 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+        error: status === 500 ? 'Internal server error' : err.message
+    });
 });
 
 // Start HTTP server

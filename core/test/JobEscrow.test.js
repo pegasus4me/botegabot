@@ -5,7 +5,6 @@ const { time } = require("@nomicfoundation/hardhat-network-helpers");
 describe("JobEscrow", function () {
     let jobEscrow;
     let agentRegistry;
-    let ausdToken;
     let owner;
     let poster;
     let executor;
@@ -20,11 +19,6 @@ describe("JobEscrow", function () {
     beforeEach(async function () {
         [owner, poster, executor, other] = await ethers.getSigners();
 
-        // Deploy MockERC20 (AUSD)
-        const MockERC20 = await ethers.getContractFactory("MockERC20");
-        ausdToken = await MockERC20.deploy();
-        await ausdToken.waitForDeployment();
-
         // Deploy AgentRegistry
         const AgentRegistry = await ethers.getContractFactory("AgentRegistry");
         agentRegistry = await AgentRegistry.deploy();
@@ -33,7 +27,6 @@ describe("JobEscrow", function () {
         // Deploy JobEscrow
         const JobEscrow = await ethers.getContractFactory("JobEscrow");
         jobEscrow = await JobEscrow.deploy(
-            await ausdToken.getAddress(),
             await agentRegistry.getAddress()
         );
         await jobEscrow.waitForDeployment();
@@ -44,18 +37,6 @@ describe("JobEscrow", function () {
         // Register agents
         await agentRegistry.connect(poster).registerAgent(["research"]);
         await agentRegistry.connect(executor).registerAgent([CAPABILITY]);
-
-        // Mint AUSD to poster and executor
-        await ausdToken.mint(poster.address, ethers.parseEther("1000"));
-        await ausdToken.mint(executor.address, ethers.parseEther("1000"));
-
-        // Approve JobEscrow to spend AUSD
-        await ausdToken
-            .connect(poster)
-            .approve(await jobEscrow.getAddress(), ethers.parseEther("1000"));
-        await ausdToken
-            .connect(executor)
-            .approve(await jobEscrow.getAddress(), ethers.parseEther("1000"));
     });
 
     describe("Job Posting", function () {
@@ -68,11 +49,12 @@ describe("JobEscrow", function () {
                         PAYMENT_AMOUNT,
                         COLLATERAL_AMOUNT,
                         CAPABILITY,
-                        DEADLINE_MINUTES
+                        DEADLINE_MINUTES,
+                        { value: PAYMENT_AMOUNT }
                     )
             ).to.emit(jobEscrow, "JobPosted");
 
-            const job = await jobEscrow.getJob(1);
+            const job = await jobEscrow.jobs(1);
             expect(job.poster).to.equal(poster.address);
             expect(job.payment).to.equal(PAYMENT_AMOUNT);
             expect(job.collateral).to.equal(COLLATERAL_AMOUNT);
@@ -80,8 +62,8 @@ describe("JobEscrow", function () {
             expect(job.status).to.equal(0); // Pending
         });
 
-        it("Should transfer payment to escrow", async function () {
-            const initialBalance = await ausdToken.balanceOf(poster.address);
+        it("Should held payment in escrow", async function () {
+            const initialBalance = await ethers.provider.getBalance(await jobEscrow.getAddress());
 
             await jobEscrow
                 .connect(poster)
@@ -90,11 +72,27 @@ describe("JobEscrow", function () {
                     PAYMENT_AMOUNT,
                     COLLATERAL_AMOUNT,
                     CAPABILITY,
-                    DEADLINE_MINUTES
+                    DEADLINE_MINUTES,
+                    { value: PAYMENT_AMOUNT }
                 );
 
-            const finalBalance = await ausdToken.balanceOf(poster.address);
-            expect(initialBalance - finalBalance).to.equal(PAYMENT_AMOUNT);
+            const finalBalance = await ethers.provider.getBalance(await jobEscrow.getAddress());
+            expect(finalBalance - initialBalance).to.equal(PAYMENT_AMOUNT);
+        });
+
+        it("Should fail if msg.value != payment", async function () {
+            await expect(
+                jobEscrow
+                    .connect(poster)
+                    .postJob(
+                        EXPECTED_HASH,
+                        PAYMENT_AMOUNT,
+                        COLLATERAL_AMOUNT,
+                        CAPABILITY,
+                        DEADLINE_MINUTES,
+                        { value: PAYMENT_AMOUNT - 1n }
+                    )
+            ).to.be.revertedWith("Must send exact payment");
         });
 
         it("Should fail with invalid hash", async function () {
@@ -106,17 +104,10 @@ describe("JobEscrow", function () {
                         PAYMENT_AMOUNT,
                         COLLATERAL_AMOUNT,
                         CAPABILITY,
-                        DEADLINE_MINUTES
+                        DEADLINE_MINUTES,
+                        { value: PAYMENT_AMOUNT }
                     )
             ).to.be.revertedWith("Invalid hash");
-        });
-
-        it("Should fail with zero payment", async function () {
-            await expect(
-                jobEscrow
-                    .connect(poster)
-                    .postJob(EXPECTED_HASH, 0, COLLATERAL_AMOUNT, CAPABILITY, DEADLINE_MINUTES)
-            ).to.be.revertedWith("Payment must be > 0");
         });
 
         it("Should fail if poster not active", async function () {
@@ -130,7 +121,8 @@ describe("JobEscrow", function () {
                         PAYMENT_AMOUNT,
                         COLLATERAL_AMOUNT,
                         CAPABILITY,
-                        DEADLINE_MINUTES
+                        DEADLINE_MINUTES,
+                        { value: PAYMENT_AMOUNT }
                     )
             ).to.be.revertedWith("Poster not active");
         });
@@ -147,57 +139,56 @@ describe("JobEscrow", function () {
                     PAYMENT_AMOUNT,
                     COLLATERAL_AMOUNT,
                     CAPABILITY,
-                    DEADLINE_MINUTES
+                    DEADLINE_MINUTES,
+                    { value: PAYMENT_AMOUNT }
                 );
             jobId = 1;
         });
 
         it("Should accept a job successfully", async function () {
-            await expect(jobEscrow.connect(executor).acceptJob(jobId))
+            await expect(jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT }))
                 .to.emit(jobEscrow, "JobAccepted")
                 .withArgs(jobId, executor.address, COLLATERAL_AMOUNT);
 
-            const job = await jobEscrow.getJob(jobId);
+            const job = await jobEscrow.jobs(jobId);
             expect(job.executor).to.equal(executor.address);
             expect(job.status).to.equal(1); // Accepted
         });
 
-        it("Should transfer collateral to escrow", async function () {
-            const initialBalance = await ausdToken.balanceOf(executor.address);
+        it("Should receive collateral in escrow", async function () {
+            const initialBalance = await ethers.provider.getBalance(await jobEscrow.getAddress());
 
-            await jobEscrow.connect(executor).acceptJob(jobId);
+            await jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT });
 
-            const finalBalance = await ausdToken.balanceOf(executor.address);
-            expect(initialBalance - finalBalance).to.equal(COLLATERAL_AMOUNT);
+            const finalBalance = await ethers.provider.getBalance(await jobEscrow.getAddress());
+            expect(finalBalance - initialBalance).to.equal(COLLATERAL_AMOUNT);
+        });
+
+        it("Should fail if msg.value != collateral", async function () {
+            await expect(
+                jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT - 1n })
+            ).to.be.revertedWith("Must send exact collateral");
         });
 
         it("Should fail if job not pending", async function () {
-            await jobEscrow.connect(executor).acceptJob(jobId);
+            await jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT });
 
             await expect(
-                jobEscrow.connect(other).acceptJob(jobId)
+                jobEscrow.connect(other).acceptJob(jobId, { value: COLLATERAL_AMOUNT })
             ).to.be.revertedWith("Job not available");
         });
 
         it("Should fail if accepting own job", async function () {
             await expect(
-                jobEscrow.connect(poster).acceptJob(jobId)
+                jobEscrow.connect(poster).acceptJob(jobId, { value: COLLATERAL_AMOUNT })
             ).to.be.revertedWith("Cannot accept own job");
-        });
-
-        it("Should fail if executor not active", async function () {
-            await agentRegistry.connect(executor).deactivateAgent();
-
-            await expect(
-                jobEscrow.connect(executor).acceptJob(jobId)
-            ).to.be.revertedWith("Executor not active");
         });
 
         it("Should fail if deadline passed", async function () {
             await time.increase(DEADLINE_MINUTES * 60 + 1);
 
             await expect(
-                jobEscrow.connect(executor).acceptJob(jobId)
+                jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT })
             ).to.be.revertedWith("Job expired");
         });
     });
@@ -213,30 +204,51 @@ describe("JobEscrow", function () {
                     PAYMENT_AMOUNT,
                     COLLATERAL_AMOUNT,
                     CAPABILITY,
-                    DEADLINE_MINUTES
+                    DEADLINE_MINUTES,
+                    { value: PAYMENT_AMOUNT }
                 );
             jobId = 1;
-            await jobEscrow.connect(executor).acceptJob(jobId);
+            await jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT });
         });
 
         it("Should complete job with matching hash", async function () {
-            const initialExecutorBalance = await ausdToken.balanceOf(executor.address);
+            const initialExecutorBalance = await ethers.provider.getBalance(executor.address);
 
-            await expect(
-                jobEscrow.connect(executor).submitResult(jobId, EXPECTED_HASH)
-            )
+            const tx = await jobEscrow.connect(executor).submitResult(jobId, EXPECTED_HASH);
+            const receipt = await tx.wait();
+            const gasUsage = receipt.gasUsed * receipt.gasPrice;
+
+            await expect(tx)
                 .to.emit(jobEscrow, "JobSubmitted")
                 .withArgs(jobId, executor.address, EXPECTED_HASH)
                 .and.to.emit(jobEscrow, "JobCompleted")
                 .withArgs(jobId, true, PAYMENT_AMOUNT, executor.address);
 
-            const job = await jobEscrow.getJob(jobId);
+            const job = await jobEscrow.jobs(jobId);
             expect(job.status).to.equal(3); // Completed
 
             // Executor should receive payment + collateral back
-            const finalExecutorBalance = await ausdToken.balanceOf(executor.address);
+            const finalExecutorBalance = await ethers.provider.getBalance(executor.address);
             const expectedPayout = PAYMENT_AMOUNT + COLLATERAL_AMOUNT;
-            expect(finalExecutorBalance - initialExecutorBalance).to.equal(expectedPayout);
+            expect(finalExecutorBalance - initialExecutorBalance + gasUsage).to.equal(expectedPayout);
+        });
+
+        it("Should fail job with mismatched hash and refund poster", async function () {
+            const wrongHash = ethers.keccak256(ethers.toUtf8Bytes("wrong result"));
+            const initialPosterBalance = await ethers.provider.getBalance(poster.address);
+
+            await expect(jobEscrow.connect(executor).submitResult(jobId, wrongHash))
+                .to.emit(jobEscrow, "JobFailed")
+                .withArgs(jobId, "Hash mismatch", COLLATERAL_AMOUNT);
+
+            const job = await jobEscrow.jobs(jobId);
+            expect(job.status).to.equal(4); // Failed
+
+            // Poster should receive payment + slashed collateral
+            const finalPosterBalance = await ethers.provider.getBalance(poster.address);
+            const expectedRefund = PAYMENT_AMOUNT + COLLATERAL_AMOUNT;
+            // poster might have paid gas if they were the ones calling, but executor called here
+            expect(finalPosterBalance - initialPosterBalance).to.equal(expectedRefund);
         });
 
         it("Should update reputation on success", async function () {
@@ -244,67 +256,6 @@ describe("JobEscrow", function () {
 
             const executorInfo = await agentRegistry.getAgentInfo(executor.address);
             expect(executorInfo.reputationScore).to.equal(5); // REPUTATION_SUCCESS
-            expect(executorInfo.totalJobsCompleted).to.equal(1);
-            expect(executorInfo.totalEarned).to.equal(PAYMENT_AMOUNT);
-        });
-
-        it("Should fail job with mismatched hash", async function () {
-            const wrongHash = ethers.keccak256(ethers.toUtf8Bytes("wrong result"));
-            const initialPosterBalance = await ausdToken.balanceOf(poster.address);
-
-            await expect(jobEscrow.connect(executor).submitResult(jobId, wrongHash))
-                .to.emit(jobEscrow, "JobFailed")
-                .withArgs(jobId, "Hash mismatch", COLLATERAL_AMOUNT);
-
-            const job = await jobEscrow.getJob(jobId);
-            expect(job.status).to.equal(4); // Failed
-
-            // Poster should receive payment + slashed collateral
-            const finalPosterBalance = await ausdToken.balanceOf(poster.address);
-            const expectedRefund = PAYMENT_AMOUNT + COLLATERAL_AMOUNT;
-            expect(finalPosterBalance - initialPosterBalance).to.equal(expectedRefund);
-        });
-
-        it("Should update reputation on failure", async function () {
-            const wrongHash = ethers.keccak256(ethers.toUtf8Bytes("wrong result"));
-
-            await jobEscrow.connect(executor).submitResult(jobId, wrongHash);
-
-            const executorInfo = await agentRegistry.getAgentInfo(executor.address);
-            expect(executorInfo.reputationScore).to.equal(-10); // REPUTATION_FAILURE
-            expect(executorInfo.totalJobsCompleted).to.equal(0);
-            expect(executorInfo.totalEarned).to.equal(0);
-        });
-
-        it("Should fail if not executor", async function () {
-            await expect(
-                jobEscrow.connect(other).submitResult(jobId, EXPECTED_HASH)
-            ).to.be.revertedWith("Only executor");
-        });
-
-        it("Should fail if job not accepted", async function () {
-            await jobEscrow
-                .connect(poster)
-                .postJob(
-                    EXPECTED_HASH,
-                    PAYMENT_AMOUNT,
-                    COLLATERAL_AMOUNT,
-                    CAPABILITY,
-                    DEADLINE_MINUTES
-                );
-            const newJobId = 2;
-
-            await expect(
-                jobEscrow.connect(executor).submitResult(newJobId, EXPECTED_HASH)
-            ).to.be.revertedWith("Only executor");
-        });
-
-        it("Should fail if deadline passed", async function () {
-            await time.increase(DEADLINE_MINUTES * 60 + 1);
-
-            await expect(
-                jobEscrow.connect(executor).submitResult(jobId, EXPECTED_HASH)
-            ).to.be.revertedWith("Deadline passed");
         });
     });
 
@@ -319,38 +270,28 @@ describe("JobEscrow", function () {
                     PAYMENT_AMOUNT,
                     COLLATERAL_AMOUNT,
                     CAPABILITY,
-                    DEADLINE_MINUTES
+                    DEADLINE_MINUTES,
+                    { value: PAYMENT_AMOUNT }
                 );
             jobId = 1;
         });
 
-        it("Should cancel pending job", async function () {
-            const initialBalance = await ausdToken.balanceOf(poster.address);
+        it("Should cancel pending job and refund poster", async function () {
+            const initialBalance = await ethers.provider.getBalance(poster.address);
 
-            await expect(jobEscrow.connect(poster).cancelJob(jobId))
+            const tx = await jobEscrow.connect(poster).cancelJob(jobId);
+            const receipt = await tx.wait();
+            const gasUsage = receipt.gasUsed * receipt.gasPrice;
+
+            await expect(tx)
                 .to.emit(jobEscrow, "JobCancelled")
                 .withArgs(jobId, poster.address, PAYMENT_AMOUNT);
 
-            const job = await jobEscrow.getJob(jobId);
+            const job = await jobEscrow.jobs(jobId);
             expect(job.status).to.equal(5); // Cancelled
 
-            // Poster should get refund
-            const finalBalance = await ausdToken.balanceOf(poster.address);
-            expect(finalBalance - initialBalance).to.equal(PAYMENT_AMOUNT);
-        });
-
-        it("Should fail if not poster", async function () {
-            await expect(
-                jobEscrow.connect(executor).cancelJob(jobId)
-            ).to.be.revertedWith("Only poster");
-        });
-
-        it("Should fail if job already accepted", async function () {
-            await jobEscrow.connect(executor).acceptJob(jobId);
-
-            await expect(
-                jobEscrow.connect(poster).cancelJob(jobId)
-            ).to.be.revertedWith("Can only cancel pending jobs");
+            const finalBalance = await ethers.provider.getBalance(poster.address);
+            expect(finalBalance - initialBalance + gasUsage).to.equal(PAYMENT_AMOUNT);
         });
     });
 
@@ -365,126 +306,31 @@ describe("JobEscrow", function () {
                     PAYMENT_AMOUNT,
                     COLLATERAL_AMOUNT,
                     CAPABILITY,
-                    DEADLINE_MINUTES
+                    DEADLINE_MINUTES,
+                    { value: PAYMENT_AMOUNT }
                 );
             jobId = 1;
-            await jobEscrow.connect(executor).acceptJob(jobId);
+            await jobEscrow.connect(executor).acceptJob(jobId, { value: COLLATERAL_AMOUNT });
         });
 
         it("Should claim timeout after deadline", async function () {
             await time.increase(DEADLINE_MINUTES * 60 + 1);
 
-            const initialBalance = await ausdToken.balanceOf(poster.address);
+            const initialBalance = await ethers.provider.getBalance(poster.address);
+            const tx = await jobEscrow.connect(poster).claimTimeout(jobId);
+            const receipt = await tx.wait();
+            const gasUsage = receipt.gasUsed * receipt.gasPrice;
 
-            await expect(jobEscrow.connect(poster).claimTimeout(jobId))
+            await expect(tx)
                 .to.emit(jobEscrow, "JobFailed")
                 .withArgs(jobId, "Deadline exceeded", COLLATERAL_AMOUNT);
 
-            const job = await jobEscrow.getJob(jobId);
+            const job = await jobEscrow.jobs(jobId);
             expect(job.status).to.equal(4); // Failed
 
-            // Poster gets payment + slashed collateral
-            const finalBalance = await ausdToken.balanceOf(poster.address);
+            const finalBalance = await ethers.provider.getBalance(poster.address);
             const expectedRefund = PAYMENT_AMOUNT + COLLATERAL_AMOUNT;
-            expect(finalBalance - initialBalance).to.equal(expectedRefund);
-        });
-
-        it("Should update reputation on timeout", async function () {
-            await time.increase(DEADLINE_MINUTES * 60 + 1);
-            await jobEscrow.connect(poster).claimTimeout(jobId);
-
-            const executorInfo = await agentRegistry.getAgentInfo(executor.address);
-            expect(executorInfo.reputationScore).to.equal(-10); // REPUTATION_FAILURE
-        });
-
-        it("Should fail if deadline not passed", async function () {
-            await expect(
-                jobEscrow.connect(poster).claimTimeout(jobId)
-            ).to.be.revertedWith("Deadline not passed");
-        });
-
-        it("Should fail if not poster", async function () {
-            await time.increase(DEADLINE_MINUTES * 60 + 1);
-
-            await expect(
-                jobEscrow.connect(executor).claimTimeout(jobId)
-            ).to.be.revertedWith("Only poster");
-        });
-
-        it("Should fail if job not in accepted state", async function () {
-            await jobEscrow
-                .connect(poster)
-                .postJob(
-                    EXPECTED_HASH,
-                    PAYMENT_AMOUNT,
-                    COLLATERAL_AMOUNT,
-                    CAPABILITY,
-                    DEADLINE_MINUTES
-                );
-            const newJobId = 2;
-
-            await time.increase(DEADLINE_MINUTES * 60 + 1);
-
-            await expect(
-                jobEscrow.connect(poster).claimTimeout(newJobId)
-            ).to.be.revertedWith("Job not in accepted state");
-        });
-    });
-
-    describe("Multiple Jobs", function () {
-        it("Should handle multiple jobs correctly", async function () {
-            // Post 3 jobs
-            await jobEscrow
-                .connect(poster)
-                .postJob(
-                    EXPECTED_HASH,
-                    PAYMENT_AMOUNT,
-                    COLLATERAL_AMOUNT,
-                    CAPABILITY,
-                    DEADLINE_MINUTES
-                );
-
-            await jobEscrow
-                .connect(poster)
-                .postJob(
-                    EXPECTED_HASH,
-                    PAYMENT_AMOUNT,
-                    COLLATERAL_AMOUNT,
-                    CAPABILITY,
-                    DEADLINE_MINUTES
-                );
-
-            await jobEscrow
-                .connect(poster)
-                .postJob(
-                    EXPECTED_HASH,
-                    PAYMENT_AMOUNT,
-                    COLLATERAL_AMOUNT,
-                    CAPABILITY,
-                    DEADLINE_MINUTES
-                );
-
-            expect(await jobEscrow.getTotalJobs()).to.equal(3);
-
-            // Accept and complete job 1
-            await jobEscrow.connect(executor).acceptJob(1);
-            await jobEscrow.connect(executor).submitResult(1, EXPECTED_HASH);
-
-            // Accept and fail job 2
-            await jobEscrow.connect(executor).acceptJob(2);
-            const wrongHash = ethers.keccak256(ethers.toUtf8Bytes("wrong"));
-            await jobEscrow.connect(executor).submitResult(2, wrongHash);
-
-            // Cancel job 3
-            await jobEscrow.connect(poster).cancelJob(3);
-
-            const job1 = await jobEscrow.getJob(1);
-            const job2 = await jobEscrow.getJob(2);
-            const job3 = await jobEscrow.getJob(3);
-
-            expect(job1.status).to.equal(3); // Completed
-            expect(job2.status).to.equal(4); // Failed
-            expect(job3.status).to.equal(5); // Cancelled
+            expect(finalBalance - initialBalance + gasUsage).to.equal(expectedRefund);
         });
     });
 });

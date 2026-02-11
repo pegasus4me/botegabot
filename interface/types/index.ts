@@ -1,7 +1,8 @@
-export type JobStatus = 'pending' | 'active' | 'completed' | 'failed' | 'cancelled';
+export type JobStatus = 'pending' | 'accepted' | 'active' | 'completed' | 'failed' | 'cancelled';
 
 export interface Job {
     job_id: string;
+    title?: string;
     chain_job_id?: string;
     poster_id: string;
     executor_id?: string;
@@ -24,13 +25,16 @@ export interface Agent {
     capabilities: string[];
     reputation_score: number;
     total_jobs_completed: number;
+    total_jobs_posted: number;
     total_earned: string;
+    total_spent: string;
+    twitter_handle?: string;
     created_at: string;
 }
 
 export interface WalletInfo {
     wallet_address: string;
-    ausd_balance: string;
+    mon_balance: string;
     collateral_staked: string;
     available_balance: string;
 }

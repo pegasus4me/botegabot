@@ -33,9 +33,6 @@ contract JobEscrow {
         uint256 completedAt;
     }
     
-    // AUSD token contract
-    IERC20 public ausdToken;
-    
     // Agent registry contract
     AgentRegistry public agentRegistry;
     
@@ -110,18 +107,15 @@ contract JobEscrow {
         _;
     }
     
-    constructor(address _ausdToken, address _agentRegistry) {
-        require(_ausdToken != address(0), "Invalid AUSD address");
+    constructor(address _agentRegistry) {
         require(_agentRegistry != address(0), "Invalid registry address");
-        
-        ausdToken = IERC20(_ausdToken);
         agentRegistry = AgentRegistry(_agentRegistry);
     }
     
     /**
      * @dev Post a new job
      * @param _expectedHash Expected result hash
-     * @param _payment Payment amount in AUSD
+     * @param _payment Payment amount in native token
      * @param _collateral Required collateral from executor
      * @param _capability Required capability
      * @param _deadlineMinutes Deadline in minutes from now
@@ -132,18 +126,13 @@ contract JobEscrow {
         uint256 _collateral,
         string memory _capability,
         uint256 _deadlineMinutes
-    ) external noReentrant returns (uint256) {
+    ) external payable noReentrant returns (uint256) {
         require(_expectedHash != bytes32(0), "Invalid hash");
         require(_payment > 0, "Payment must be > 0");
         require(_collateral > 0, "Collateral must be > 0");
         require(_deadlineMinutes > 0, "Deadline must be > 0");
+        require(msg.value == _payment, "Must send exact payment");
         require(agentRegistry.isAgentActive(msg.sender), "Poster not active");
-        
-        // Transfer payment to escrow
-        require(
-            ausdToken.transferFrom(msg.sender, address(this), _payment),
-            "Payment transfer failed"
-        );
         
         jobCounter++;
         uint256 jobId = jobCounter;
@@ -175,19 +164,14 @@ contract JobEscrow {
      * @dev Accept a job
      * @param _jobId Job ID to accept
      */
-    function acceptJob(uint256 _jobId) external noReentrant {
+    function acceptJob(uint256 _jobId) external payable noReentrant {
         Job storage job = jobs[_jobId];
         
         require(job.status == JobStatus.Pending, "Job not available");
         require(job.poster != msg.sender, "Cannot accept own job");
         require(block.timestamp < job.deadline, "Job expired");
+        require(msg.value == job.collateral, "Must send exact collateral");
         require(agentRegistry.isAgentActive(msg.sender), "Executor not active");
-        
-        // Transfer collateral to escrow
-        require(
-            ausdToken.transferFrom(msg.sender, address(this), job.collateral),
-            "Collateral transfer failed"
-        );
         
         job.executor = msg.sender;
         job.status = JobStatus.Accepted;
@@ -236,10 +220,8 @@ contract JobEscrow {
             
             uint256 totalPayout = job.payment + job.collateral;
             
-            require(
-                ausdToken.transfer(job.executor, totalPayout),
-                "Payment transfer failed"
-            );
+            (bool success, ) = payable(job.executor).call{value: totalPayout}("");
+            require(success, "Payment transfer failed");
             
             // Update reputation and stats
             agentRegistry.updateReputation(job.executor, REPUTATION_SUCCESS);
@@ -253,10 +235,8 @@ contract JobEscrow {
             
             uint256 totalRefund = job.payment + job.collateral;
             
-            require(
-                ausdToken.transfer(job.poster, totalRefund),
-                "Refund transfer failed"
-            );
+            (bool success, ) = payable(job.poster).call{value: totalRefund}("");
+            require(success, "Refund transfer failed");
             
             // Update reputation (negative for executor)
             agentRegistry.updateReputation(job.executor, REPUTATION_FAILURE);
@@ -278,10 +258,8 @@ contract JobEscrow {
         job.status = JobStatus.Cancelled;
         
         // Refund payment to poster
-        require(
-            ausdToken.transfer(job.poster, job.payment),
-            "Refund transfer failed"
-        );
+        (bool success, ) = payable(job.poster).call{value: job.payment}("");
+        require(success, "Refund transfer failed");
         
         emit JobCancelled(_jobId, msg.sender, job.payment);
     }
@@ -302,10 +280,8 @@ contract JobEscrow {
         // Refund payment + slashed collateral to poster
         uint256 totalRefund = job.payment + job.collateral;
         
-        require(
-            ausdToken.transfer(job.poster, totalRefund),
-            "Refund transfer failed"
-        );
+        (bool success, ) = payable(job.poster).call{value: totalRefund}("");
+        require(success, "Refund transfer failed");
         
         // Negative reputation for executor
         agentRegistry.updateReputation(job.executor, REPUTATION_FAILURE);

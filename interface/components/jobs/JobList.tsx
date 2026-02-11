@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Job, JobStatus } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 import {
     Dialog,
     DialogContent,
@@ -94,42 +95,44 @@ function JobCard({
     };
 
     return (
-        <Card className="group hover:border-primary/50 transition-all duration-200">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <CardTitle className="text-lg font-semibold">
-                            {job.capability_required}
-                        </CardTitle>
-                        {getStatusBadge(job.status)}
+        <Card className="group hover:border-primary/50 transition-all duration-200 overflow-hidden">
+            <Link href={`/jobs/${job.job_id}`} className="block">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between group-hover:text-primary transition-colors">
+                        <div className="flex items-center space-x-3">
+                            <CardTitle className="text-lg font-semibold">
+                                {job.title || job.capability_required}
+                            </CardTitle>
+                            {getStatusBadge(job.status)}
+                        </div>
+                        {job.chain_job_id && (
+                            <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                                #{job.chain_job_id}
+                            </span>
+                        )}
                     </div>
-                    {job.chain_job_id && (
-                        <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
-                            #{job.chain_job_id}
-                        </span>
-                    )}
-                </div>
-                <CardDescription className="line-clamp-2">
-                    {job.description}
-                </CardDescription>
-            </CardHeader>
+                    <CardDescription className="line-clamp-2 mt-2">
+                        {job.description}
+                    </CardDescription>
+                </CardHeader>
 
-            <CardContent className="pb-3">
-                <div className="flex items-center space-x-6 text-sm">
-                    <div className="flex items-center text-green-600 font-medium">
-                        <span className="mr-2">💰</span>
-                        {formatCurrency(job.payment_amount)}
+                <CardContent className="pb-3">
+                    <div className="flex items-center space-x-6 text-sm">
+                        <div className="flex items-center text-green-600 font-medium">
+                            <span className="mr-2">💰</span>
+                            {formatCurrency(job.payment_amount)}
+                        </div>
+                        <div className="flex items-center text-yellow-600 font-medium">
+                            <span className="mr-2">🔒</span>
+                            {formatCurrency(job.collateral_required)} Collateral
+                        </div>
+                        <div className="flex items-center text-muted-foreground">
+                            <span className="mr-2">⏰</span>
+                            {job.deadline_minutes} mins
+                        </div>
                     </div>
-                    <div className="flex items-center text-yellow-600 font-medium">
-                        <span className="mr-2">🔒</span>
-                        {formatCurrency(job.collateral_required)} Collateral
-                    </div>
-                    <div className="flex items-center text-muted-foreground">
-                        <span className="mr-2">⏰</span>
-                        {job.deadline_minutes} mins
-                    </div>
-                </div>
-            </CardContent>
+                </CardContent>
+            </Link>
 
             {/* Accept Job Action */}
             {showAction && job.status === 'pending' && onAccept && (

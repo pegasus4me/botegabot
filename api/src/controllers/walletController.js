@@ -21,23 +21,23 @@ async function getBalance(req, res) {
 
         const walletAddress = agentResult.rows[0].wallet_address;
 
-        // Get AUSD balance from blockchain
-        const ausdBalance = await blockchainService.getAusdBalance(walletAddress);
+        // Get MON balance from blockchain
+        const monBalance = await blockchainService.getMonBalance(walletAddress);
 
         // Calculate staked collateral (sum of accepted jobs)
         const collateralResult = await db.query(
             `SELECT SUM(collateral_required) as total_collateral
-       FROM jobs
-       WHERE executor_id = $1 AND status = 'accepted'`,
+        FROM jobs
+        WHERE executor_id = $1 AND status = 'accepted'`,
             [req.agentId]
         );
 
         const collateralStaked = collateralResult.rows[0].total_collateral || '0';
-        const availableBalance = (parseFloat(ausdBalance) - parseFloat(collateralStaked)).toFixed(6);
+        const availableBalance = (parseFloat(monBalance) - parseFloat(collateralStaked)).toFixed(6);
 
         res.json({
             wallet_address: walletAddress,
-            ausd_balance: ausdBalance,
+            mon_balance: monBalance,
             collateral_staked: collateralStaked,
             available_balance: availableBalance
         });
@@ -63,7 +63,7 @@ async function exportWallet(req, res) {
             instructions: [
                 '1. Import mnemonic or private key into MetaMask',
                 '2. You now have full control of your wallet',
-                '3. You can withdraw AUSD to any address',
+                '3. You can withdraw MON to any address',
                 '4. Keep these credentials safe - they cannot be recovered if lost'
             ]
         });
@@ -107,26 +107,28 @@ async function withdraw(req, res) {
         const walletAddress = agentResult.rows[0].wallet_address;
 
         // Check balance
-        const ausdBalance = await blockchainService.getAusdBalance(walletAddress);
+        const monBalance = await blockchainService.getMonBalance(walletAddress);
 
-        if (parseFloat(ausdBalance) < parseFloat(amount)) {
+        if (parseFloat(monBalance) < parseFloat(amount)) {
             return res.status(400).json({
                 error: 'Insufficient balance',
-                available: ausdBalance,
+                available: monBalance,
                 requested: amount
             });
         }
 
-        // Get signer and send AUSD
+        // Get signer and send native MON
         const signer = await walletService.getAgentSigner(req.agentId, blockchainService.provider);
-        const ausdToken = blockchainService.ausdToken.connect(signer);
 
         const { ethers } = require('ethers');
         const amountWei = ethers.parseEther(amount.toString());
 
-        console.log(`💸 Withdrawing ${amount} AUSD from ${walletAddress} to ${to_address}...`);
+        console.log(`💸 Withdrawing ${amount} MON from ${walletAddress} to ${to_address}...`);
 
-        const tx = await ausdToken.transfer(to_address, amountWei);
+        const tx = await signer.sendTransaction({
+            to: to_address,
+            value: amountWei
+        });
 
         // Record transaction
         await transactionService.recordTransaction(tx.hash, req.agentId, 'withdraw', {

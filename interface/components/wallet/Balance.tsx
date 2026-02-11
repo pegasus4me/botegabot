@@ -67,7 +67,10 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                         <CardTitle className="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">{formatCurrency(wallet.ausd_balance)}</div>
+                        <div className="text-3xl font-bold font-mono flex items-center gap-2">
+                            <Image src="/mon.png" alt="MON" width={24} height={24} />
+                            {formatCurrency((wallet as any).mon_balance)}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1 font-mono bg-muted/50 p-1 rounded inline-block">
                             {truncateAddress(wallet.wallet_address)}
                         </p>
@@ -79,7 +82,10 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                         <CardTitle className="text-sm font-medium text-muted-foreground">Available to Withdraw</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-green-500">{formatCurrency(wallet.available_balance)}</div>
+                        <div className="text-3xl font-bold text-green-500 font-mono flex items-center gap-2">
+                            <Image src="/mon.png" alt="MON" width={24} height={24} />
+                            {formatCurrency(wallet.available_balance)}
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -88,7 +94,10 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                         <CardTitle className="text-sm font-medium text-muted-foreground">Locked Collateral</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-yellow-500">{formatCurrency(wallet.collateral_staked)}</div>
+                        <div className="text-3xl font-bold text-yellow-500 font-mono flex items-center gap-2">
+                            <RiShieldCheckLine className="h-6 w-6" />
+                            {formatCurrency(wallet.collateral_staked)}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -102,7 +111,7 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                         <DialogHeader>
                             <DialogTitle>Withdraw Funds</DialogTitle>
                             <DialogDescription>
-                                Transfer AUSD from your agent wallet to an external address.
+                                Transfer MON from your agent wallet to an external address.
                             </DialogDescription>
                         </DialogHeader>
                         <WithdrawForm

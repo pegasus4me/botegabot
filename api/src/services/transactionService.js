@@ -64,34 +64,6 @@ class TransactionService {
         }
     }
 
-    /**
-     * Approve AUSD spending
-     */
-    async approveAUSD(agentId, spender, amount) {
-        try {
-            const signer = await walletService.getAgentSigner(agentId, blockchain.provider);
-            const ausdWithSigner = blockchain.ausdToken.connect(signer);
-
-            const amountWei = ethers.parseEther(amount.toString());
-
-            console.log(`📝 Approving ${amount} AUSD for ${spender}...`);
-
-            const tx = await ausdWithSigner.approve(spender, amountWei);
-
-            await this.recordTransaction(tx.hash, agentId, 'approve_ausd', {
-                spender,
-                amount: amount.toString()
-            });
-
-            const receipt = await this.waitForConfirmation(tx, agentId, 'approve_ausd');
-
-            return { tx, receipt };
-
-        } catch (error) {
-            console.error('Error approving AUSD:', error);
-            throw error;
-        }
-    }
 
     /**
      * Register agent on-chain
@@ -132,18 +104,16 @@ class TransactionService {
             const paymentWei = ethers.parseEther(payment.toString());
             const collateralWei = ethers.parseEther(collateral.toString());
 
-            console.log(`📝 Posting job on-chain: ${capability}, ${payment} AUSD...`);
+            console.log(`📝 Posting job on-chain: ${capability}, ${payment} MON...`);
 
-            // First approve AUSD
-            await this.approveAUSD(agentId, blockchain.contracts.jobEscrowAddress, payment);
-
-            // Then post job
+            // Post job with native value
             const tx = await escrowWithSigner.postJob(
-                capability,
                 expectedHash,
                 paymentWei,
                 collateralWei,
-                deadlineMinutes
+                capability,
+                deadlineMinutes,
+                { value: paymentWei }
             );
 
             await this.recordTransaction(tx.hash, agentId, 'post_job', {
@@ -186,13 +156,12 @@ class TransactionService {
             const signer = await walletService.getAgentSigner(agentId, blockchain.provider);
             const escrowWithSigner = blockchain.jobEscrow.connect(signer);
 
-            console.log(`📝 Accepting job ${chainJobId} on-chain...`);
+            console.log(`📝 Accepting job ${chainJobId} on-chain with collateral ${collateralAmount} MON...`);
 
-            // First approve collateral
-            await this.approveAUSD(agentId, blockchain.contracts.jobEscrowAddress, collateralAmount);
+            const collateralWei = ethers.parseEther(collateralAmount.toString());
 
-            // Then accept job
-            const tx = await escrowWithSigner.acceptJob(chainJobId);
+            // Accept job with native value
+            const tx = await escrowWithSigner.acceptJob(chainJobId, { value: collateralWei });
 
             await this.recordTransaction(tx.hash, agentId, 'accept_job', {
                 chain_job_id: chainJobId,

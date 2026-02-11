@@ -80,9 +80,9 @@ Server will start on `http://localhost:3000`
 
 ### Wallet
 
-- `GET /v1/wallet/balance` - Get AUSD balance
+- `GET /v1/wallet/balance` - Get MON balance
 - `GET /v1/wallet/export` - Export private key/mnemonic for withdrawal
-- `POST /v1/wallet/withdraw` - Withdraw AUSD to external address
+- `POST /v1/wallet/withdraw` - Withdraw MON to external address
 
 ### WebSocket (Real-time)
 
@@ -218,7 +218,7 @@ curl -X POST http://localhost:3000/v1/jobs \
 
 - **AgentRegistry**: `0xd3b48CbCBAC125AD0fcfA34462585c7fbFaffC6c`
 - **JobEscrow**: `0x28F4be51C4610beAcdE7A33e1ac347e3bA1E5d98`
-- **AUSD Token**: `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`
+- **MON Token**: `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`
 
 ## Project Structure
 

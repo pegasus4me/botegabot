@@ -9,6 +9,7 @@ const transactionService = require('../services/transactionService');
 async function postJob(req, res) {
     try {
         const {
+            title,
             capability_required,
             description,
             requirements,
@@ -19,7 +20,7 @@ async function postJob(req, res) {
         } = req.body;
 
         // Validation
-        if (!capability_required || !description || !expected_output_hash || !payment_amount || !collateral_required || !deadline_minutes) {
+        if (!title || !capability_required || !description || !expected_output_hash || !payment_amount || !collateral_required || !deadline_minutes) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -40,13 +41,14 @@ async function postJob(req, res) {
         // Insert into database
         const result = await db.query(
             `INSERT INTO jobs (
-        job_id, poster_id, capability_required, description, requirements,
+        job_id, title, poster_id, capability_required, description, requirements,
         expected_output_hash, payment_amount, collateral_required,
         deadline_minutes, deadline, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
             [
                 jobId,
+                title,
                 req.agentId,
                 capability_required,
                 description,
@@ -134,7 +136,8 @@ async function getAvailableJobs(req, res) {
 
         const jobs = result.rows.map(row => ({
             job_id: row.job_id,
-            poster: row.poster_id,
+            title: row.title,
+            poster_id: row.poster_id,
             poster_name: row.poster_name,
             capability_required: row.capability_required,
             description: row.description,
@@ -220,7 +223,7 @@ async function acceptJob(req, res) {
                 executor: req.agentId,
                 deadline: job.deadline
             },
-            message: `Job accepted! Complete before deadline to earn ${job.payment_amount} AUSD`
+            message: `Job accepted! Complete before deadline to earn ${job.payment_amount} MON`
         });
 
     } catch (error) {
@@ -419,7 +422,7 @@ async function submitResult(req, res) {
                 completed_at: new Date()
             },
             message: hashMatch
-                ? `✅ Hash verified! ${job.payment_amount} AUSD will be paid to your wallet`
+                ? `✅ Hash verified! ${job.payment_amount} MON will be paid to your wallet`
                 : '❌ Hash mismatch! Collateral will be slashed'
         });
 
@@ -436,10 +439,18 @@ async function getJob(req, res) {
     try {
         const { job_id } = req.params;
 
-        const result = await db.query(
-            'SELECT * FROM jobs WHERE job_id = $1',
-            [job_id]
-        );
+        const query = `
+            SELECT 
+                j.*, 
+                a.name as poster_name,
+                e.name as executor_name
+            FROM jobs j
+            LEFT JOIN agents a ON j.poster_id = a.agent_id
+            LEFT JOIN agents e ON j.executor_id = e.agent_id
+            WHERE j.job_id = $1
+        `;
+
+        const result = await db.query(query, [job_id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Job not found' });
@@ -453,10 +464,55 @@ async function getJob(req, res) {
     }
 }
 
+/**
+ * Get recent jobs across all statuses (Activity Feed)
+ */
+async function getRecentJobs(req, res) {
+    try {
+        const query = `
+      SELECT 
+        j.*, 
+        a.name as poster_name,
+        e.name as executor_name
+      FROM jobs j
+      LEFT JOIN agents a ON j.poster_id = a.agent_id
+      LEFT JOIN agents e ON j.executor_id = e.agent_id
+      ORDER BY j.updated_at DESC
+      LIMIT 10
+    `;
+
+        const result = await db.query(query);
+
+        const jobs = result.rows.map(row => ({
+            job_id: row.job_id,
+            title: row.title,
+            poster_id: row.poster_id,
+            poster_name: row.poster_name,
+            executor_id: row.executor_id,
+            executor_name: row.executor_name,
+            capability_required: row.capability_required,
+            description: row.description,
+            payment_amount: row.payment_amount,
+            collateral_required: row.collateral_required,
+            deadline_minutes: row.deadline_minutes,
+            status: row.status,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        }));
+
+        res.json({ jobs });
+
+    } catch (error) {
+        console.error('Get recent activity error:', error);
+        res.status(500).json({ error: 'Failed to get recent activity' });
+    }
+}
+
 module.exports = {
     postJob,
     getAvailableJobs,
     acceptJob,
     submitResult,
-    getJob
+    getJob,
+    getRecentJobs
 };

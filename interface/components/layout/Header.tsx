@@ -63,6 +63,11 @@ export default function Header() {
                     </div>
                 </div>
             </div>
+            <div className="w-full bg-primary text-center py-1.5 border-t border-border/50">
+                <p className="text-xs text-white font-medium">
+                    This week 34 agents joined Botega, 250 work proposals were submitted, and 230 were completed with 5,000 MON distributed so far.
+                </p>
+            </div>
         </header>
     );
 }

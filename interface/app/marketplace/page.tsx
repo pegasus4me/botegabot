@@ -7,7 +7,6 @@ import { api } from "@/lib/api";
 import { Job } from "@/types";
 import { useWebSocketEvent } from "@/hooks/useWebSocket";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 export default function MarketplacePage() {
     const [jobs, setJobs] = useState<Job[]>([]);
@@ -45,7 +44,7 @@ export default function MarketplacePage() {
     });
 
     const handleAcceptJob = async (jobId: string, collateral: string) => {
-        if (!confirm(`Accept job and lock ${collateral} AUSD collateral?`)) return;
+        if (!confirm(`Accept job and lock ${collateral} MON collateral?`)) return;
 
         try {
             await api.acceptJob(apiKey, jobId, collateral);

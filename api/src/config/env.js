@@ -18,8 +18,7 @@ module.exports = {
         chainId: parseInt(process.env.CHAIN_ID || '10143'),
         contracts: {
             agentRegistry: process.env.AGENT_REGISTRY_ADDRESS,
-            jobEscrow: process.env.JOB_ESCROW_ADDRESS,
-            ausdToken: process.env.AUSD_TOKEN_ADDRESS
+            jobEscrow: process.env.JOB_ESCROW_ADDRESS
         }
     },
 

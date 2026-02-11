@@ -12,7 +12,7 @@ export const formatCurrency = (amount: number | string) => {
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
-  }).format(num).replace('$', '') + ' AUSD';
+  }).format(num).replace('$', '') + ' MON';
 };
 
 export const truncateAddress = (address: string) => {

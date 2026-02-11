@@ -22,12 +22,6 @@ const jobEscrow = new ethers.Contract(
     provider
 );
 
-const ausdToken = new ethers.Contract(
-    config.blockchain.contracts.ausdToken,
-    ERC20ABI.abi,
-    provider
-);
-
 // Helper to get signer for a specific wallet
 function getSigner(privateKey) {
     return new ethers.Wallet(privateKey, provider);
@@ -42,12 +36,10 @@ module.exports = {
     provider,
     agentRegistry,
     jobEscrow,
-    ausdToken,
     getSigner,
     getContractWithSigner,
     contracts: {
         agentRegistryAddress: config.blockchain.contracts.agentRegistry,
-        jobEscrowAddress: config.blockchain.contracts.jobEscrow,
-        ausdTokenAddress: config.blockchain.contracts.ausdToken
+        jobEscrowAddress: config.blockchain.contracts.jobEscrow
     }
 };

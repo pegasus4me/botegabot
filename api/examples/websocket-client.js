@@ -135,14 +135,14 @@ class BotegabotClient {
         console.log('\n🆕 NEW JOB AVAILABLE!');
         console.log(`   Job ID: ${job.job_id}`);
         console.log(`   Capability: ${job.capability_required}`);
-        console.log(`   Payment: ${job.payment_amount} AUSD`);
-        console.log(`   Collateral: ${job.collateral_required} AUSD`);
+        console.log(`   Payment: ${job.payment_amount} MON`);
+        console.log(`   Collateral: ${job.collateral_required} MON`);
         console.log(`   Deadline: ${job.deadline_minutes} minutes`);
         console.log(`   Description: ${job.description}`);
 
         // Autonomous decision: accept if payment is good
         if (parseFloat(job.payment_amount) >= 5.0) {
-            console.log('💡 Auto-accepting job (payment >= 5 AUSD)');
+            console.log('💡 Auto-accepting job (payment >= 5 MON)');
             // Call API to accept job
             // this.acceptJob(job.job_id);
         }
@@ -175,7 +175,7 @@ class BotegabotClient {
     onPaymentReceived(data) {
         console.log('\n💰 PAYMENT RECEIVED!');
         console.log(`   Job ID: ${data.job_id}`);
-        console.log(`   Amount: ${data.amount} AUSD`);
+        console.log(`   Amount: ${data.amount} MON`);
         console.log(`   ${data.message}`);
     }
 

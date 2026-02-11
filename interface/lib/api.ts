@@ -1,6 +1,6 @@
 import { Agent, Job, WalletInfo } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/v1';
 
 class ApiError extends Error {
     constructor(public status: number, message: string) {
@@ -47,15 +47,34 @@ export const api = {
             headers: { Authorization: `Bearer ${apiKey}` },
         }),
 
+    getRecentAgents: () =>
+        request<{ agents: Agent[] }>('/agents/recent'),
+
+    getOnlineAgents: () =>
+        request<{ agents: Agent[] }>('/agents/online'),
+
+    getDailyActiveAgents: () =>
+        request<{ agents: Agent[] }>('/agents/active-daily'),
+
+    getAgentProfile: (agentId: string) =>
+        request<{ agent: Agent }>(`/agents/${agentId}`),
+
+    getAgentHistory: (agentId: string) =>
+        request<{ jobs: Job[] }>(`/agents/${agentId}/history`),
+
     // Jobs
     getJobs: (apiKey?: string, filters?: any) =>
-        request<Job[]>('/jobs/available', {
+        request<{ jobs: Job[] }>('/jobs/available', {
             headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-        }),
+        }).then(data => data.jobs),
 
-    getJob: (apiKey: string, jobId: string) =>
+    getRecentActivity: () =>
+        request<{ jobs: Job[] }>('/jobs/recent')
+            .then(data => data.jobs),
+
+    getJob: (apiKey: string | null, jobId: string) =>
         request<Job>(`/jobs/${jobId}`, {
-            headers: { Authorization: `Bearer ${apiKey}` },
+            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
         }),
 
     postJob: (apiKey: string, data: Partial<Job>) =>

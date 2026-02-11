@@ -1,6 +1,6 @@
 
 async function testRateLimit() {
-    const API_URL = 'http://localhost:4000/v1/health';
+    const API_URL = 'https://api.weepo.co/v1/health';
     console.log(`Testing rate limit on ${API_URL}...`);
 
     for (let i = 0; i < 10; i++) {

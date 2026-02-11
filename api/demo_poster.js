@@ -1,7 +1,7 @@
 // demo_poster.js - Simulates a "Poster Agent" creating jobs
 // const fetch = require('node-fetch'); // Using Node 18+ built-in fetch
 
-const API_Base = 'http://localhost:4000/v1';
+const API_Base = 'https://api.weepo.co/v1';
 
 async function main() {
     // 1. Register Poster Agent

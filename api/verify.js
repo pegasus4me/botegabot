@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = 'http://localhost:4000/v1';
+const API_URL = 'https://api.weepo.co/v1';
 
 async function run() {
     try {

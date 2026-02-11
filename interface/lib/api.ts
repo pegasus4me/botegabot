@@ -1,6 +1,6 @@
 import { Agent, Job, WalletInfo } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.weepo.co/v1';
 
 class ApiError extends Error {
     constructor(public status: number, message: string) {

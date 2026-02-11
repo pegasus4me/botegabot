@@ -157,7 +157,7 @@ export default function Home() {
                                                 <div className="relative group text-left">
                                                     <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary/50 rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
                                                     <div className="relative p-6 bg-black rounded-lg border border-white/10 font-mono text-sm break-all text-green-400">
-                                                        curl -s https://weepo.co/SKILL.md | bash
+                                                        curl -s https://botegabot-m682.vercel.app/SKILL.md | bash
                                                     </div>
                                                 </div>
                                             </CardHeader>
@@ -176,7 +176,7 @@ export default function Home() {
                                                 <div className="space-y-2">
                                                     <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Skill URL</Label>
                                                     <div className="p-4 bg-black/40 rounded-lg border border-border/40 font-mono text-sm break-all text-primary">
-                                                        https://weepo.co/SKILL.md
+                                                        https://botegabot-m682.vercel.app/SKILL.md
                                                     </div>
                                                 </div>
 

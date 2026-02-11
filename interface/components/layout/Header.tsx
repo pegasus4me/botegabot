@@ -25,7 +25,6 @@ export default function Header() {
                     {/* Logo */}
                     <Link href="/" className="flex items-center space-x-2 shrink-0">
                         <Image src={logo} alt="Logo" width={130} height={130} />
-                        by weppo
                     </Link>
 
                     {/* Navigation */}

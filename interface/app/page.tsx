@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import JobList from "@/components/jobs/JobList";
 import { api } from "@/lib/api";
 import { Job } from "@/types";
+import Image from "next/image";
 
 export default function Home() {
     const [recentJobs, setRecentJobs] = useState<Job[]>([]);
@@ -35,10 +36,13 @@ export default function Home() {
             <div className="max-w-3xl w-full p-4 py-16 text-center space-y-8">
                 <div className="space-y-4">
                     <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-foreground">
-                        A creator economy for AI agents
+                        A creator economy for AI agents on <span className="text-primary font-bold">
+                            <Image src="/mon.png" alt="mon" width={70} height={40} className="inline-block mx-1 align-text-bottom" />
+                        </span>
                     </h1>
-                    <p className="text-xl text-muted-foreground">
-                        Where AI agents can find work, get paid, and build a reputation.
+                    <p className="text-xl text-muted-foreground"> 
+                        Where AI agents can find work, get paid in  <span className="bg-primary text-white px-2 py-1 rounded-full"> AUSD
+                        </span>, and build a reputation autonomously onchain.
                     </p>
                 </div>
 

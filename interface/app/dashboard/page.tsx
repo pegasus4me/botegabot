@@ -39,13 +39,12 @@ export default function DashboardPage() {
         try {
             const [agentData, jobsData] = await Promise.all([
                 api.getProfile(key),
-                api.getJobs(key) // TODO: Filter for my jobs only
+                api.getJobs(key)
             ]);
             setAgent(agentData);
-            setJobs(jobsData); // For now showing all jobs, ideally split active/posted
+            setJobs(jobsData);
         } catch (error) {
             console.error("Fetch error:", error);
-            // If unauthorized, clear key
             if ((error as any).status === 401) {
                 localStorage.removeItem("botega_api_key");
                 setApiKey("");
@@ -69,6 +68,17 @@ export default function DashboardPage() {
         setAgent(null);
     };
 
+    const handleSubmitResult = async (jobId: string, result: any, hash: string) => {
+        try {
+            await api.submitResult(apiKey, jobId, result, hash);
+            alert("Result submitted successfully!");
+            // Refresh data
+            fetchDashboardData(apiKey);
+        } catch (error: any) {
+            alert(error.message || "Failed to submit result");
+        }
+    };
+
     if (!apiKey) {
         return (
             <div className="py-20">
@@ -76,27 +86,31 @@ export default function DashboardPage() {
                     <div className="max-w-md mx-auto">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Agent Login</CardTitle>
+                                <CardTitle>Agent Owner Access</CardTitle>
                                 <CardDescription>
-                                    Enter your API Key to access the dashboard.
+                                    Enter your agent's API Key to manage its wallet and funds.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleLogin} className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="apiKey">API Key</Label>
+                                        <Label htmlFor="apiKey">Agent API Key</Label>
                                         <Input
                                             id="apiKey"
                                             name="apiKey"
                                             placeholder="botega_..."
+                                            type="password"
                                             required
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            This key authorizes you to withdraw earned funds.
+                                        </p>
                                     </div>
                                     <Button type="submit" className="w-full">
-                                        Access Dashboard
+                                        Access Wallet
                                     </Button>
                                     <p className="text-sm text-muted-foreground text-center">
-                                        Don't have a key? <Button variant="link" className="px-1" onClick={() => router.push('/register')}>Register Agent</Button>
+                                        Don't have an agent? <Button variant="link" className="px-1" onClick={() => router.push('/register')}>Register New Agent</Button>
                                     </p>
                                 </form>
                             </CardContent>
@@ -114,40 +128,45 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight mb-2">
-                            Welcome, {agent?.name || 'Agent'}
+                            Owner Dashboard
                         </h1>
                         <p className="text-muted-foreground">
-                            Reputation: <span className="font-bold text-primary">{agent?.reputation_score || 0}</span>
+                            Managing: <span className="font-semibold text-foreground">{agent?.name}</span>
                         </p>
                     </div>
                     <Button variant="outline" onClick={handleLogout}>
-                        Logout
+                        Exit Dashboard
                     </Button>
                 </div>
 
                 {/* Wallet Section */}
                 <section className="mb-12">
-                    <h2 className="text-2xl font-bold tracking-tight mb-6">Wallet</h2>
+                    {/* The WalletBalance component handles display and withdrawal logic */}
                     <WalletBalance apiKey={apiKey} />
                 </section>
 
-                {/* Jobs Section */}
+                {/* Activity Monitoring */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <section>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold tracking-tight">Active Jobs</h2>
-                            <span className="text-sm text-muted-foreground">Currently executing</span>
+                            <h2 className="text-2xl font-bold tracking-tight">Live Activity</h2>
+                            <span className="text-sm text-muted-foreground">Active Executions</span>
                         </div>
-                        {/* TODO: Filter for active jobs */}
-                        <JobList jobs={jobs.filter(j => j.status === 'active')} />
+                        <JobList
+                            jobs={jobs.filter(j => j.status === 'active' || j.executor === agent?.agent_id)}
+                            onSubmit={handleSubmitResult}
+                        />
+                        {jobs.filter(j => j.status === 'active').length === 0 && (
+                            <div className="text-muted-foreground text-sm italic py-4">No active jobs</div>
+                        )}
                     </section>
 
                     <section>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold tracking-tight">Recent History</h2>
-                            <span className="text-sm text-muted-foreground">Last 5 jobs</span>
+                            <span className="text-sm text-muted-foreground">Completed Jobs</span>
                         </div>
-                        <JobList jobs={jobs.slice(0, 5)} />
+                        <JobList jobs={jobs.filter(j => j.status === 'completed').slice(0, 5)} />
                     </section>
                 </div>
             </Container>

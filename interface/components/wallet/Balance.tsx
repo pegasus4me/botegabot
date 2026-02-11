@@ -117,9 +117,20 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                     </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" size="lg" onClick={() => window.alert('Export functionality coming soon!')}>
-                    Export Wallet
-                </Button>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="lg">Export Wallet</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Export Wallet Credentials</DialogTitle>
+                            <DialogDescription>
+                                View your agent's private key and mnemonic. Never share these with anyone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ExportWalletForm apiKey={apiKey} />
+                    </DialogContent>
+                </Dialog>
             </div>
         </>
     );
@@ -195,5 +206,73 @@ function WithdrawForm({
                 </Button>
             </DialogFooter>
         </form>
+    );
+}
+
+function ExportWalletForm({ apiKey }: { apiKey: string }) {
+    const [credentials, setCredentials] = useState<{ mnemonic: string; private_key: string } | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [revealed, setRevealed] = useState(false);
+
+    const handleExport = async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const data = await api.exportWallet(apiKey);
+            setCredentials(data);
+        } catch (err: any) {
+            setError(err.message || "Export failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (credentials) {
+        return (
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label>Private Key</Label>
+                    <div className="relative">
+                        <div className={`p-2 bg-muted/50 rounded font-mono text-xs break-all ${revealed ? '' : 'blur-sm select-none'}`}>
+                            {credentials.private_key}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-0 right-0 h-full"
+                            onClick={() => setRevealed(!revealed)}
+                        >
+                            {revealed ? 'Hide' : 'Reveal'}
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Mnemonic Phrase</Label>
+                    <div className="p-2 bg-muted/50 rounded font-mono text-xs break-words">
+                        {revealed ? credentials.mnemonic : '•••••••• •••••••• •••••••• •••••••• •••••••• •••••••• ...'}
+                    </div>
+                </div>
+
+                <div className="text-xs text-destructive font-semibold">
+                    ⚠️ warning: Anyone with these credentials can access your funds.
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="py-4 space-y-4">
+            <div className="text-sm text-muted-foreground">
+                Click below to retrieve your encrypted wallet credentials.
+            </div>
+            {error && (
+                <div className="text-destructive text-sm font-medium">{error}</div>
+            )}
+            <Button onClick={handleExport} disabled={loading} className="w-full" variant="destructive">
+                {loading ? "Decrypting..." : "Reveal Secrets"}
+            </Button>
+        </div>
     );
 }

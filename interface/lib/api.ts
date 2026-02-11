@@ -42,6 +42,11 @@ export const api = {
             headers: { Authorization: `Bearer ${apiKey}` },
         }),
 
+    searchAgents: (apiKey: string, query: string) =>
+        request<{ agents: Agent[] }>(`/agents/search?capability=${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${apiKey}` },
+        }),
+
     // Jobs
     getJobs: (apiKey?: string, filters?: any) =>
         request<Job[]>('/jobs/available', {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
     Card,
@@ -10,14 +11,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Job, JobStatus } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface JobListProps {
     jobs: Job[];
     showAction?: boolean;
     onAccept?: (jobId: string, collateral: string) => void;
+    onSubmit?: (jobId: string, result: any, hash: string) => void;
 }
 
-export default function JobList({ jobs, showAction = false, onAccept }: JobListProps) {
+export default function JobList({ jobs, showAction = false, onAccept, onSubmit }: JobListProps) {
     if (jobs.length === 0) {
         return (
             <Card className="bg-muted/50 border-dashed">
@@ -36,6 +50,7 @@ export default function JobList({ jobs, showAction = false, onAccept }: JobListP
                     job={job}
                     showAction={showAction}
                     onAccept={onAccept}
+                    onSubmit={onSubmit}
                 />
             ))}
         </div>
@@ -45,18 +60,36 @@ export default function JobList({ jobs, showAction = false, onAccept }: JobListP
 function JobCard({
     job,
     showAction,
-    onAccept
+    onAccept,
+    onSubmit
 }: {
     job: Job;
     showAction?: boolean;
     onAccept?: (id: string, col: string) => void;
+    onSubmit?: (id: string, result: any, hash: string) => void;
 }) {
+    const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+    const [resultJson, setResultJson] = useState("");
+    const [resultHash, setResultHash] = useState("");
+
     const getStatusBadge = (status: JobStatus) => {
         switch (status) {
             case 'active': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
             case 'completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">Completed</Badge>;
             case 'failed': return <Badge variant="destructive">Failed</Badge>;
             default: return <Badge variant="secondary">Pending</Badge>;
+        }
+    };
+
+    const handleSubmit = () => {
+        if (onSubmit && resultJson && resultHash) {
+            try {
+                const parsed = JSON.parse(resultJson);
+                onSubmit(job.job_id, parsed, resultHash);
+                setIsSubmitOpen(false);
+            } catch (e) {
+                alert("Invalid JSON result");
+            }
         }
     };
 
@@ -98,6 +131,7 @@ function JobCard({
                 </div>
             </CardContent>
 
+            {/* Accept Job Action */}
             {showAction && job.status === 'pending' && onAccept && (
                 <CardFooter className="pt-3 border-t bg-muted/20">
                     <Button
@@ -106,6 +140,51 @@ function JobCard({
                     >
                         Accept Job
                     </Button>
+                </CardFooter>
+            )}
+
+            {/* Submit Result Action (for active jobs where we have an onSubmit handler) */}
+            {job.status === 'active' && onSubmit && (
+                <CardFooter className="pt-3 border-t bg-muted/20">
+                    <Dialog open={isSubmitOpen} onOpenChange={setIsSubmitOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="w-full sm:w-auto ml-auto" variant="default">
+                                Submit Result
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Submit Job Result</DialogTitle>
+                                <DialogDescription>
+                                    Provide the JSON result and the computed hash.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Result JSON</Label>
+                                    <Textarea
+                                        placeholder='{"data": "..."}'
+                                        value={resultJson}
+                                        onChange={(e) => setResultJson(e.target.value)}
+                                        className="font-mono text-xs"
+                                        rows={5}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Result Hash (0x...)</Label>
+                                    <Input
+                                        placeholder="0x..."
+                                        value={resultHash}
+                                        onChange={(e) => setResultHash(e.target.value)}
+                                        className="font-mono"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleSubmit}>Submit to Chain</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </CardFooter>
             )}
         </Card>

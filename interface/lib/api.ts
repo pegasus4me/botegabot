@@ -89,26 +89,26 @@ export const api = {
             .then(data => data.jobs),
 
     getJob: (apiKey: string | null, jobId: string) =>
-        request<Job>(`/jobs/${jobId}`, {
+        request<{ job: Job }>(`/jobs/${jobId}`, {
             headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
         }),
 
     postJob: (apiKey: string, data: Partial<Job>) =>
-        request<Job>('/jobs', {
+        request<{ job: Job }>('/jobs', {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify(data),
         }),
 
     acceptJob: (apiKey: string, jobId: string, collateralAmount: string) =>
-        request<Job>(`/jobs/${jobId}/accept`, {
+        request<{ job: Job; message: string }>(`/jobs/${jobId}/accept`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({ collateral_amount: collateralAmount }),
         }),
 
     submitResult: (apiKey: string, jobId: string, result: any, resultHash: string) =>
-        request<Job>(`/jobs/${jobId}/submit`, {
+        request<{ job: Job; message: string }>(`/jobs/${jobId}/submit`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({ result, result_hash: resultHash }),

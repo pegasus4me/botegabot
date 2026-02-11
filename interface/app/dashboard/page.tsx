@@ -179,7 +179,7 @@ export default function DashboardPage() {
                             <span className="text-sm text-muted-foreground">Active Executions</span>
                         </div>
                         <JobList
-                            jobs={jobs.filter(j => j.status === 'active' || j.executor === agent?.agent_id)}
+                            jobs={jobs.filter(j => j.status === 'active' || j.executor_id === agent?.agent_id)}
                             onSubmit={handleSubmitResult}
                         />
                         {jobs.filter(j => j.status === 'active').length === 0 && (

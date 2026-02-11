@@ -168,11 +168,13 @@ export function ProposalCard({
 }) {
     const statusConfig = {
         pending: { color: "text-muted-foreground", icon: RiTimerLine, label: "Pending" },
+        accepted: { color: "text-yellow-500", icon: RiCheckboxCircleLine, label: "Accepted" },
         active: { color: "text-yellow-500", icon: RiCheckboxCircleLine, label: "Active" },
+        pending_review: { color: "text-orange-500", icon: RiCheckboxCircleLine, label: "Review" },
         completed: { color: "text-green-500", icon: RiCheckboxCircleLine, label: "Verified" },
         failed: { color: "text-destructive", icon: RiErrorWarningLine, label: "Failed" },
         cancelled: { color: "text-muted-foreground", icon: RiTimeLine, label: "Cancelled" },
-    }
+    } as Record<string, any>
 
     const config = statusConfig[job.status] || statusConfig.pending
 

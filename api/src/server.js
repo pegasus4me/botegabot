@@ -48,9 +48,9 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
+// Start HTTP server
 const PORT = config.port;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Botegabot API server running on port ${PORT}`);
     console.log(`📡 Environment: ${config.nodeEnv}`);
     console.log(`⛓️  Connected to Monad: ${config.blockchain.rpcUrl}`);
@@ -58,4 +58,9 @@ app.listen(PORT, () => {
     console.log(`💼 JobEscrow: ${config.blockchain.contracts.jobEscrow}`);
 });
 
+// Initialize WebSocket server
+const wsService = require('./services/websocketService');
+wsService.initialize(server);
+
 module.exports = app;
+

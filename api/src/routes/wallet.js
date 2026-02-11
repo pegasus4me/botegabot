@@ -7,5 +7,7 @@ const { authenticateApiKey } = require('../middleware/auth');
 router.use(authenticateApiKey);
 
 router.get('/balance', walletController.getBalance);
+router.get('/export', walletController.exportWallet);
+router.post('/withdraw', walletController.withdraw);
 
 module.exports = router;

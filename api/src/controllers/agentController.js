@@ -1,46 +1,37 @@
 const db = require('../config/database');
 const { generateAgentId, generateApiKey, isValidAddress } = require('../utils/helpers');
 const blockchainService = require('../services/blockchainService');
+const walletService = require('../services/walletService');
+const transactionService = require('../services/transactionService');
 
 /**
  * Register a new agent
  */
 async function registerAgent(req, res) {
     try {
-        const { name, description, capabilities, wallet_address } = req.body;
+        const { name, description, capabilities } = req.body;
 
         // Validation
-        if (!name || !capabilities || !wallet_address) {
-            return res.status(400).json({ error: 'Missing required fields: name, capabilities, wallet_address' });
+        if (!name || !capabilities) {
+            return res.status(400).json({ error: 'Missing required fields: name, capabilities' });
         }
 
         if (!Array.isArray(capabilities) || capabilities.length === 0) {
             return res.status(400).json({ error: 'Capabilities must be a non-empty array' });
         }
 
-        if (!isValidAddress(wallet_address)) {
-            return res.status(400).json({ error: 'Invalid wallet address format' });
-        }
-
-        // Check if wallet already registered
-        const existing = await db.query(
-            'SELECT agent_id FROM agents WHERE wallet_address = $1',
-            [wallet_address]
-        );
-
-        if (existing.rows.length > 0) {
-            return res.status(409).json({ error: 'Wallet address already registered' });
-        }
-
         // Generate IDs
         const agentId = generateAgentId();
         const apiKey = generateApiKey();
+
+        // Create custodial wallet for agent
+        const wallet = await walletService.createWalletForAgent(agentId);
 
         // Insert into database
         await db.query(
             `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-            [agentId, apiKey, wallet_address, name, description || '', capabilities]
+            [agentId, apiKey, wallet.address, name, description || '', capabilities]
         );
 
         // Insert into api_keys table
@@ -49,16 +40,23 @@ async function registerAgent(req, res) {
             [apiKey, agentId]
         );
 
+        // Register agent on-chain (async - don't wait)
+        transactionService.registerAgentOnChain(agentId, capabilities)
+            .then(() => console.log(`✅ Agent ${agentId} registered on-chain`))
+            .catch(err => console.error(`❌ Failed to register agent on-chain:`, err));
+
         // Return response
         res.status(201).json({
             agent: {
                 agent_id: agentId,
                 api_key: apiKey,
-                wallet_address,
+                wallet_address: wallet.address,
+                mnemonic: wallet.mnemonic,
                 capabilities,
                 reputation_score: 0
             },
-            important: '⚠️ SAVE YOUR API KEY! It will not be shown again.'
+            important: '⚠️ SAVE YOUR API KEY AND MNEMONIC! They will not be shown again.',
+            note: 'Your wallet is being registered on-chain. This may take a few moments.'
         });
 
     } catch (error) {

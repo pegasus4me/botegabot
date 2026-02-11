@@ -1,6 +1,7 @@
 const db = require('../config/database');
 const { generateJobId, isValidHash } = require('../utils/helpers');
 const { generateHash } = require('../services/hashService');
+const transactionService = require('../services/transactionService');
 
 /**
  * Post a new job
@@ -61,8 +62,27 @@ async function postJob(req, res) {
 
         const job = result.rows[0];
 
-        // TODO: Call blockchain to post job (requires wallet integration)
-        // For now, we'll just store in database
+        // Post job on-chain (async)
+        transactionService.postJobOnChain(req.agentId, {
+            capability: capability_required,
+            expectedHash: expected_output_hash,
+            payment: payment_amount,
+            collateral: collateral_required,
+            deadlineMinutes: deadline_minutes
+        })
+            .then(async (txResult) => {
+                // Update database with on-chain job ID
+                await db.query(
+                    'UPDATE jobs SET chain_job_id = $1, escrow_tx_hash = $2 WHERE job_id = $3',
+                    [txResult.chainJobId, txResult.tx.hash, job.job_id]
+                );
+                console.log(`✅ Job ${job.job_id} posted on-chain: ${txResult.tx.hash}`);
+            })
+            .catch(err => console.error(`❌ Failed to post job on-chain:`, err));
+
+        // Broadcast to WebSocket clients
+        const wsService = require('../services/websocketService');
+        wsService.broadcastJobPosted(job);
 
         res.status(201).json({
             job: {
@@ -176,7 +196,22 @@ async function acceptJob(req, res) {
             [req.agentId, job_id]
         );
 
-        // TODO: Call blockchain to accept job
+        // Accept job on-chain (async)
+        if (job.chain_job_id) {
+            transactionService.acceptJobOnChain(req.agentId, job.chain_job_id, collateral_amount)
+                .then(async (txResult) => {
+                    await db.query(
+                        'UPDATE jobs SET collateral_tx_hash = $1 WHERE job_id = $2',
+                        [txResult.tx.hash, job_id]
+                    );
+                    console.log(`✅ Job ${job_id} accepted on-chain: ${txResult.tx.hash}`);
+                })
+                .catch(err => console.error(`❌ Failed to accept job on-chain:`, err));
+        }
+
+        // Notify poster via WebSocket
+        const wsService = require('../services/websocketService');
+        wsService.notifyJobAccepted(job, req.agentId);
 
         res.json({
             job: {
@@ -284,7 +319,96 @@ async function submitResult(req, res) {
             );
         }
 
-        // TODO: Call blockchain to submit result
+        // Submit result on-chain (async)
+        if (job.chain_job_id) {
+            transactionService.submitResultOnChain(req.agentId, job.chain_job_id, result_hash)
+                .then(async (txResult) => {
+                    const finalStatus = txResult.verified ? 'completed' : 'failed';
+
+                    // Update job with on-chain result
+                    await db.query(
+                        `UPDATE jobs SET 
+                            submitted_hash = $1,
+                            status = $2,
+                            payment_tx_hash = $3,
+                            completed_at = NOW(),
+                            updated_at = NOW()
+                         WHERE job_id = $4`,
+                        [result_hash, finalStatus, txResult.tx.hash, job_id]
+                    );
+
+                    // Update agent stats based on on-chain result
+                    if (txResult.verified) {
+                        await db.query(
+                            `UPDATE agents SET
+                                total_jobs_completed = total_jobs_completed + 1,
+                                total_earned = total_earned + $1,
+                                reputation_score = reputation_score + 5
+                             WHERE agent_id = $2`,
+                            [job.payment_amount, req.agentId]
+                        );
+
+                        await db.query(
+                            `UPDATE agents SET total_spent = total_spent + $1 WHERE agent_id = $2`,
+                            [job.payment_amount, job.poster_id]
+                        );
+                    } else {
+                        await db.query(
+                            'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
+                            [req.agentId]
+                        );
+                    }
+
+                    console.log(`✅ Job ${job_id} ${txResult.verified ? 'completed' : 'failed'} on-chain: ${txResult.tx.hash}`);
+
+                    // Notify via WebSocket
+                    const wsService = require('../services/websocketService');
+                    wsService.notifyPaymentReceived(job, job.payment_amount, txResult.verified);
+                    wsService.notifyJobCompleted(job, txResult.verified);
+                })
+                .catch(err => console.error(`❌ Failed to submit result on-chain:`, err));
+        } else {
+            // Fallback: off-chain verification (for jobs created before wallet integration)
+            const hashMatch = result_hash === job.expected_output_hash;
+            const newStatus = hashMatch ? 'completed' : 'failed';
+
+            await db.query(
+                `UPDATE jobs SET 
+                    submitted_hash = $1, 
+                    status = $2, 
+                    completed_at = NOW(),
+                    updated_at = NOW()
+                 WHERE job_id = $3`,
+                [result_hash, newStatus, job_id]
+            );
+
+            // Update agent stats
+            if (hashMatch) {
+                await db.query(
+                    `UPDATE agents SET
+                        total_jobs_completed = total_jobs_completed + 1,
+                        total_earned = total_earned + $1,
+                        reputation_score = reputation_score + 5
+                     WHERE agent_id = $2`,
+                    [job.payment_amount, req.agentId]
+                );
+
+                await db.query(
+                    `UPDATE agents SET total_spent = total_spent + $1 WHERE agent_id = $2`,
+                    [job.payment_amount, job.poster_id]
+                );
+            } else {
+                await db.query(
+                    'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
+                    [req.agentId]
+                );
+            }
+
+            // Notify via WebSocket
+            const wsService = require('../services/websocketService');
+            wsService.notifyPaymentReceived(job, job.payment_amount, hashMatch);
+            wsService.notifyJobCompleted(job, hashMatch);
+        }
 
         res.json({
             job: {

@@ -33,6 +33,11 @@ module.exports = {
         jwtSecret: process.env.JWT_SECRET
     },
 
+    wallet: {
+        encryptionKey: process.env.WALLET_ENCRYPTION_KEY,
+        deployerPrivateKey: process.env.DEPLOYER_PRIVATE_KEY
+    },
+
     websocket: {
         port: process.env.WS_PORT || 3001
     }

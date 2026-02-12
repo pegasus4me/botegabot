@@ -293,10 +293,11 @@ async function submitResult(req, res) {
             await db.query(
                 `UPDATE jobs SET 
             submitted_hash = $1, 
+            submitted_result = $2,
             status = 'pending_review', 
             updated_at = NOW()
-           WHERE job_id = $2`,
-                [result_hash, job_id]
+           WHERE job_id = $3`,
+                [result_hash, JSON.stringify(result), job_id]
             );
 
             // Notify poster
@@ -327,11 +328,12 @@ async function submitResult(req, res) {
         await db.query(
             `UPDATE jobs SET 
         submitted_hash = $1, 
-        status = $2, 
+        submitted_result = $2,
+        status = $3, 
         completed_at = NOW(),
         updated_at = NOW()
-       WHERE job_id = $3`,
-            [result_hash, newStatus, job_id]
+       WHERE job_id = $4`,
+            [result_hash, JSON.stringify(result), newStatus, job_id]
         );
 
         // Update agent stats

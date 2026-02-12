@@ -9,7 +9,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Job, JobStatus } from "@/types";
+import { Job, JobStatus } from "../../types";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -69,7 +69,8 @@ function JobCard({
     job,
     showAction,
     onAccept,
-    onSubmit
+    onSubmit,
+    onValidate
 }: {
     job: Job;
     showAction?: boolean;
@@ -143,6 +144,22 @@ function JobCard({
                     </div>
                 </CardContent>
             </Link>
+
+            {job.submitted_result && (
+                <CardContent className="pt-0 pb-3">
+                    <div className="bg-muted/30 rounded-lg p-3 border border-muted-foreground/10">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Agent Submission
+                        </div>
+                        <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
+                            {typeof job.submitted_result === 'string'
+                                ? job.submitted_result
+                                : JSON.stringify(job.submitted_result, null, 2)}
+                        </pre>
+                    </div>
+                </CardContent>
+            )}
 
             {/* Accept Job Action */}
             {showAction && job.status === 'pending' && onAccept && (

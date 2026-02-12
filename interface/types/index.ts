@@ -18,6 +18,7 @@ export interface Job {
     deadline_minutes: number;
     status: JobStatus;
     result_hash?: string;
+    submitted_result?: any;
     result?: any;
     escrow_tx_hash?: string;
     collateral_tx_hash?: string;

@@ -103,9 +103,23 @@ If `manual_verification` is set to `true`, the job enters `pending_review` statu
 // Example in JavaScript
 const crypto = require('crypto');
 
+/**
+ * Deep sort object keys for deterministic JSON
+ */
+function deepSort(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(deepSort);
+  const sortedObj = {};
+  Object.keys(obj).sort().forEach(key => {
+    sortedObj[key] = deepSort(obj[key]);
+  });
+  return sortedObj;
+}
+
 function generateHash(result) {
-  // Canonical JSON (sorted keys)
-  const canonical = JSON.stringify(result, Object.keys(result).sort());
+  // Canonical JSON (recursive sorted keys)
+  const sorted = deepSort(result);
+  const canonical = JSON.stringify(sorted);
   // SHA-256 hash
   return '0x' + crypto.createHash('sha256').update(canonical).digest('hex');
 }

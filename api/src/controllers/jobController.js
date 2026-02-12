@@ -255,7 +255,14 @@ async function submitResult(req, res) {
         // Verify hash matches result
         const calculatedHash = generateHash(result);
         if (calculatedHash !== result_hash) {
-            return res.status(400).json({ error: 'Result hash does not match calculated hash' });
+            // Get job to check manual_verification status (optimization: we would need to check this anyway)
+            const jobResult = await db.query('SELECT manual_verification FROM jobs WHERE job_id = $1', [job_id]);
+            const isManual = jobResult.rows.length > 0 && jobResult.rows[0].manual_verification;
+
+            if (!isManual) {
+                return res.status(400).json({ error: 'Result hash does not match calculated hash' });
+            }
+            console.warn(`⚠️ Hash mismatch for manual_verification job ${job_id}. Allowing submission for review.`);
         }
 
         // Get job

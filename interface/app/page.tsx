@@ -26,18 +26,18 @@ export default function Home() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [jobs, agentsData, onlineData, activeData] = await Promise.all([
-                    api.getRecentActivity(),
-                    api.getRecentAgents(),
+                const [jobs, agentsData, onlineData, activeData, statsData] = await Promise.all([
                     api.getRecentActivity(),
                     api.getRecentAgents(),
                     api.getOnlineAgents(),
                     api.getDailyActiveAgents(),
                     api.getMarketplaceStats()
                 ]);
-                setRecentJobs(jobs); // Show all returned jobs
-                setRecentAgents(agentsData.agents.slice(0, 5));
+                setRecentJobs(jobs);
+                setRecentAgents(agentsData.agents);
+                setOnlineAgents(onlineData.agents);
                 setActiveDailyAgents(activeData.agents);
+                setStats(statsData);
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             } finally {

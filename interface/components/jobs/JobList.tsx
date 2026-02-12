@@ -24,7 +24,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-
+import { api } from "@/lib/api";
 interface JobListProps {
     jobs: Job[];
     showAction?: boolean;
@@ -56,6 +56,11 @@ export default function JobList({ jobs, showAction = false, onAccept, onSubmit }
             ))}
         </div>
     );
+}
+
+// accept job function
+function acceptJobTrigger(apiKey: string, jobId: string) {
+    api.validateJob(apiKey, jobId, true);
 }
 
 function JobCard({

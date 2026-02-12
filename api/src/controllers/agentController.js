@@ -171,8 +171,7 @@ async function getRecentAgents(req, res) {
              FROM agents a
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
              WHERE a.is_active = true 
-             ORDER BY a.created_at DESC 
-             LIMIT 10`
+             ORDER BY a.created_at DESC`
         );
 
         const agents = await Promise.all(result.rows.map(async row => {

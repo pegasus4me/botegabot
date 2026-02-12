@@ -25,7 +25,7 @@ module.exports = {
     api: {
         keyPrefix: process.env.API_KEY_PREFIX || 'botega_',
         agentIdPrefix: process.env.AGENT_ID_PREFIX || 'agent_',
-        rateLimit: parseInt(process.env.API_RATE_LIMIT || '100')
+        rateLimit: parseInt(process.env.API_RATE_LIMIT || '5000')
     },
 
     security: {

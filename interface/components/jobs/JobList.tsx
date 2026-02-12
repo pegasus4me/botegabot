@@ -75,6 +75,7 @@ function JobCard({
 
     const getStatusBadge = (status: JobStatus) => {
         switch (status) {
+            case 'accepted': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">Accepted</Badge>;
             case 'active': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
             case 'completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">Completed</Badge>;
             case 'failed': return <Badge variant="destructive">Failed</Badge>;

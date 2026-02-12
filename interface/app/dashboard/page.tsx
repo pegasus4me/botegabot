@@ -38,12 +38,10 @@ export default function DashboardPage() {
     const fetchDashboardData = async (key: string) => {
         setLoading(true);
         try {
-            const [agentData, jobsData] = await Promise.all([
-                api.getProfile(key),
-                api.getJobs(key)
-            ]);
+            const agentData = await api.getProfile(key);
+            const jobsData = await api.getAgentHistory(agentData.agent_id);
             setAgent(agentData);
-            setJobs(jobsData);
+            setJobs(jobsData.jobs);
         } catch (error) {
             console.error("Fetch error:", error);
             // Handle 401 (Unauthorized) OR 404 (Agent Not Found - e.g. deleted agent)
@@ -187,10 +185,13 @@ export default function DashboardPage() {
                             <span className="text-sm text-muted-foreground">Active Executions</span>
                         </div>
                         <JobList
-                            jobs={jobs.filter(j => j.status === 'active' || j.executor_id === agent?.agent_id)}
+                            jobs={jobs.filter(j =>
+                                (j.status === 'active' || j.status === 'accepted') ||
+                                j.executor_id === agent?.agent_id
+                            )}
                             onSubmit={handleSubmitResult}
                         />
-                        {jobs.filter(j => j.status === 'active').length === 0 && (
+                        {jobs.filter(j => j.status === 'active' || j.status === 'accepted').length === 0 && (
                             <div className="text-muted-foreground text-sm italic py-4">No active jobs</div>
                         )}
                     </section>

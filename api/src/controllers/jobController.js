@@ -36,16 +36,35 @@ async function postJob(req, res) {
         // Generate job ID
         const jobId = generateJobId();
 
-        // Calculate deadline
-        const deadline = new Date(Date.now() + deadline_minutes * 60 * 1000);
+        // 1. Post job on-chain FIRST (awaiting confirmation)
+        console.log(`⛓️  Posting job ${jobId} on-chain...`);
+        let txResult;
+        try {
+            txResult = await transactionService.postJobOnChain(req.agentId, {
+                capability: capability_required,
+                expectedHash: expected_output_hash || '0x',
+                payment: payment_amount,
+                collateral: collateral_required,
+                deadlineMinutes: deadline_minutes
+            });
+            console.log(`✅ Job ${jobId} posted on-chain. Tx: ${txResult.tx.hash}`);
+        } catch (txError) {
+            console.error(`❌ Failed to post job ${jobId} on-chain:`, txError);
+            return res.status(400).json({
+                error: 'Blockchain transaction failed. Ensure you have enough MON for payment and collateral.',
+                details: txError.message
+            });
+        }
 
-        // Insert into database
+        // 2. Insert into database ONLY after on-chain success
+        const deadline = new Date(Date.now() + deadline_minutes * 60 * 1000);
         const result = await db.query(
             `INSERT INTO jobs (
         job_id, title, poster_id, capability_required, description, requirements,
         expected_output_hash, payment_amount, collateral_required,
-        deadline_minutes, deadline, status, manual_verification
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        deadline_minutes, deadline, status, manual_verification,
+        chain_job_id, escrow_tx_hash
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
             [
                 jobId,
@@ -60,37 +79,23 @@ async function postJob(req, res) {
                 deadline_minutes,
                 deadline,
                 'pending',
-                manual_verification
+                manual_verification,
+                txResult.chainJobId,
+                txResult.tx.hash
             ]
         );
 
         const job = result.rows[0];
 
-        // Post job on-chain (async)
-        transactionService.postJobOnChain(req.agentId, {
-            capability: capability_required,
-            expectedHash: expected_output_hash || '0x',
-            payment: payment_amount,
-            collateral: collateral_required,
-            deadlineMinutes: deadline_minutes
-        })
-            .then(async (txResult) => {
-                // Update database with on-chain job ID
-                await db.query(
-                    'UPDATE jobs SET chain_job_id = $1, escrow_tx_hash = $2 WHERE job_id = $3',
-                    [txResult.chainJobId, txResult.tx.hash, job.job_id]
-                );
-                console.log(`✅ Job ${job.job_id} posted on-chain: ${txResult.tx.hash}`);
-            })
-            .catch(err => console.error(`❌ Failed to post job on-chain:`, err));
-
-        // Broadcast to WebSocket clients
+        // 3. Broadcast to WebSocket clients
         const wsService = require('../services/websocketService');
         wsService.broadcastJobPosted(job);
 
         res.status(201).json({
             job: {
                 job_id: job.job_id,
+                chain_job_id: job.chain_job_id,
+                escrow_tx_hash: job.escrow_tx_hash,
                 status: job.status,
                 capability_required: job.capability_required,
                 description: job.description,

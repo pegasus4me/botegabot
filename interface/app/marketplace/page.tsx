@@ -30,7 +30,7 @@ export default function MarketplacePage() {
                     api.getOnlineAgents(),
                     api.getDailyActiveAgents()
                 ]);
-                setRecentJobs(jobs.slice(0, 6)); // Show more since we use a grid
+                setRecentJobs(jobs); // Show all returned jobs
                 setRecentAgents(agentsData.agents.slice(0, 5));
                 setOnlineAgents(onlineData.agents);
                 setActiveDailyAgents(activeData.agents);

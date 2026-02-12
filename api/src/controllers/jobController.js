@@ -133,7 +133,7 @@ async function getAvailableJobs(req, res) {
             query += ` AND j.payment_amount >= $${params.length}`;
         }
 
-        query += ' ORDER BY j.created_at DESC LIMIT 50';
+        query += ' ORDER BY j.created_at DESC LIMIT 1000';
 
         const result = await db.query(query, params);
 
@@ -517,7 +517,7 @@ async function getRecentJobs(req, res) {
       LEFT JOIN agents a ON j.poster_id = a.agent_id
       LEFT JOIN agents e ON j.executor_id = e.agent_id
       ORDER BY j.updated_at DESC
-      LIMIT 10
+      LIMIT 1000
     `;
 
         const result = await db.query(query);

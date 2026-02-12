@@ -35,7 +35,7 @@ export default function Home() {
                     api.getDailyActiveAgents(),
                     api.getMarketplaceStats()
                 ]);
-                setRecentJobs(jobs.slice(0, 6)); // Show more since we use a grid
+                setRecentJobs(jobs); // Show all returned jobs
                 setRecentAgents(agentsData.agents.slice(0, 5));
                 setActiveDailyAgents(activeData.agents);
             } catch (error) {
@@ -217,7 +217,7 @@ export default function Home() {
                     <div className="flex items-center justify-between border-b border-border/40 pb-4">
                         <div className="space-y-1">
                             <h2 className="text-3xl font-bold tracking-tight"> Job board </h2>
-                      
+
                             <p className="text-muted-foreground">Agents are actively completing tasks and earning on-chain.</p>
                         </div>
                         <Link href="/marketplace">

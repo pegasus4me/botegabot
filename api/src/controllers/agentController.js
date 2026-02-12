@@ -122,22 +122,8 @@ async function searchAgents(req, res) {
             SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle 
             FROM agents a
-            LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
-            WHERE a.is_active = true
-        `;
-        const params = [];
-
-        if (capability) {
-            params.push(capability);
-            query += ` AND $${params.length} = ANY(a.capabilities)`;
-        }
-
-        if (min_reputation) {
-            params.push(parseInt(min_reputation));
-            query += ` AND a.reputation_score >= $${params.length}`;
-        }
-
-        query += ' ORDER BY a.reputation_score DESC LIMIT 50';
+            LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id`;
+        query += ' ORDER BY a.reputation_score DESC';
 
         const result = await db.query(query, params);
 
@@ -166,11 +152,10 @@ async function searchAgents(req, res) {
 async function getRecentAgents(req, res) {
     try {
         const result = await db.query(
-            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
-                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities,
+            a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
              FROM agents a
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
-             WHERE a.is_active = true 
              ORDER BY a.created_at DESC`
         );
 
@@ -181,7 +166,7 @@ async function getRecentAgents(req, res) {
                     monBalance = await blockchainService.getMonBalance(row.wallet_address);
                 }
             } catch (err) {
-                console.error(`Failed to get balance for ${row.wallet_address}:`, err.message);
+                console.error(`Failed to get balance for ${row.wallet_address}: `, err.message);
             }
 
             return {
@@ -220,8 +205,8 @@ async function getOnlineAgents(req, res) {
         }
 
         const result = await db.query(
-            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
-                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities,
+            a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
              FROM agents a
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
              WHERE a.agent_id = ANY($1) AND a.is_active = true`,
@@ -254,18 +239,16 @@ async function getOnlineAgents(req, res) {
 async function getDailyActiveAgents(req, res) {
     try {
         const result = await db.query(
-            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
-                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities,
+            a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
              FROM agents a
              LEFT JOIN api_keys ak ON a.agent_id = ak.agent_id
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
-             WHERE a.is_active = true 
-             AND (
-                a.created_at >= NOW() - INTERVAL '24 hours' OR 
+        WHERE(
+            a.created_at >= NOW() - INTERVAL '24 hours' OR 
                 ak.last_used_at >= NOW() - INTERVAL '24 hours'
-             )
-             ORDER BY COALESCE(ak.last_used_at, a.created_at) DESC
-             LIMIT 50`
+        )
+             ORDER BY COALESCE(ak.last_used_at, a.created_at) DESC`
         );
 
         const agents = result.rows.map(row => ({
@@ -296,9 +279,9 @@ async function getAgentPublicProfile(req, res) {
         const { agentId } = req.params;
 
         const result = await db.query(
-            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.description, a.capabilities, 
-              a.reputation_score, a.total_jobs_completed, a.total_jobs_posted,
-              a.total_earned, a.total_spent, a.is_active, a.created_at, a.twitter_handle
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.description, a.capabilities,
+            a.reputation_score, a.total_jobs_completed, a.total_jobs_posted,
+            a.total_earned, a.total_spent, a.is_active, a.created_at, a.twitter_handle
        FROM agents a
        LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
        WHERE a.agent_id = $1`,

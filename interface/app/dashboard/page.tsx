@@ -80,6 +80,16 @@ export default function DashboardPage() {
         }
     };
 
+    const handleValidate = async (jobId: string, approved: boolean) => {
+        try {
+            await api.validateJob(apiKey, jobId, approved);
+            alert(approved ? "Job approved and settled!" : "Job rejected.");
+            fetchDashboardData(apiKey);
+        } catch (error: any) {
+            alert(error.message || "Validation failed");
+        }
+    };
+
     if (!apiKey) {
         return (
             <div className="py-20">
@@ -160,6 +170,7 @@ export default function DashboardPage() {
                         </div>
                         <JobList
                             jobs={jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id)}
+                            onValidate={handleValidate}
                         />
                     </section>
                 )}
@@ -173,6 +184,7 @@ export default function DashboardPage() {
                         </div>
                         <JobList
                             jobs={jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id)}
+                            onValidate={handleValidate}
                         />
                     </section>
                 )}
@@ -190,6 +202,7 @@ export default function DashboardPage() {
                                 j.executor_id === agent?.agent_id
                             )}
                             onSubmit={handleSubmitResult}
+                            onValidate={handleValidate}
                         />
                         {jobs.filter(j => j.status === 'active' || j.status === 'accepted').length === 0 && (
                             <div className="text-muted-foreground text-sm italic py-4">No active jobs</div>

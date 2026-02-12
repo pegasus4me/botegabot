@@ -36,7 +36,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                 </span>
                                 <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter font-mono">
                                     <RiUserAddLine className="h-3 w-3" />
-                                    Joined {new Date(agent.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                                    Joined {new Date(agent.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} ({new Date(agent.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
                                 </span>
                                 {agent.twitter_handle && (
                                     <a

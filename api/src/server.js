@@ -10,6 +10,7 @@ const jobRoutes = require('./routes/jobs');
 const walletRoutes = require('./routes/wallet');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (e.g. Nginx/Vercel)
 
 // Security middleware
 app.use(helmet());

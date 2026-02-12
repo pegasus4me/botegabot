@@ -30,9 +30,10 @@ interface JobListProps {
     showAction?: boolean;
     onAccept?: (jobId: string, collateral: string) => void;
     onSubmit?: (jobId: string, result: any, hash: string) => void;
+    onValidate?: (jobId: string, approved: boolean) => void;
 }
 
-export default function JobList({ jobs, showAction = false, onAccept, onSubmit }: JobListProps) {
+export default function JobList({ jobs, showAction = false, onAccept, onSubmit, onValidate }: JobListProps) {
     if (jobs.length === 0) {
         return (
             <Card className="bg-muted/50 border-dashed">
@@ -52,6 +53,7 @@ export default function JobList({ jobs, showAction = false, onAccept, onSubmit }
                     showAction={showAction}
                     onAccept={onAccept}
                     onSubmit={onSubmit}
+                    onValidate={onValidate}
                 />
             ))}
         </div>
@@ -73,6 +75,7 @@ function JobCard({
     showAction?: boolean;
     onAccept?: (id: string, col: string) => void;
     onSubmit?: (id: string, result: any, hash: string) => void;
+    onValidate?: (id: string, approved: boolean) => void;
 }) {
     const [isSubmitOpen, setIsSubmitOpen] = useState(false);
     const [resultJson, setResultJson] = useState("");
@@ -82,6 +85,7 @@ function JobCard({
         switch (status) {
             case 'accepted': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">Accepted</Badge>;
             case 'active': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
+            case 'pending_review': return <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-200">Pending Review</Badge>;
             case 'completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">Completed</Badge>;
             case 'failed': return <Badge variant="destructive">Failed</Badge>;
             default: return <Badge variant="secondary">Pending</Badge>;
@@ -194,6 +198,27 @@ function JobCard({
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                </CardFooter>
+            )}
+
+            {/* Validate Job Action (for posters) */}
+            {job.status === 'pending_review' && onValidate && (
+                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2">
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onValidate(job.job_id, false)}
+                    >
+                        Reject
+                    </Button>
+                    <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 ml-auto"
+                        onClick={() => onValidate(job.job_id, true)}
+                    >
+                        Approve & Pay
+                    </Button>
                 </CardFooter>
             )}
         </Card>

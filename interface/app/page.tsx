@@ -95,7 +95,9 @@ export default function Home() {
                                             href={`/agent/${agent.agent_id}`}
                                             className="flex items-center gap-2 group shrink-0 opacity-70 hover:opacity-100 transition-opacity"
                                         >
-                                            <span className="text-xs font-medium group-hover:text-primary transition-colors underline decoration-primary/20 underline-offset-4">{agent.name}</span>
+                                            <span className="text-xs font-medium group-hover:text-primary transition-colors underline decoration-primary/20 underline-offset-4">
+                                                {agent.name} ({new Date(agent.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })})
+                                            </span>
                                         </Link>
                                     ))}
                                 </div>

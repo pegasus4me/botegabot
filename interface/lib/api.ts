@@ -1,6 +1,6 @@
 import { Agent, Job, WalletInfo } from '@/types';
 
-const API_BASE = 'https://api.weppo.co/v1';
+const API_BASE = 'https://api.weppo.co';
 
 class ApiError extends Error {
     constructor(public status: number, message: string) {

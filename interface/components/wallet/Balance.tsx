@@ -43,6 +43,10 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
             setWallet(data);
         } catch (error) {
             console.error("Failed to fetch wallet:", error);
+            if ((error as any).status === 401 || (error as any).status === 404) {
+                localStorage.removeItem("botega_api_key");
+                window.location.reload();
+            }
         } finally {
             setLoading(false);
         }

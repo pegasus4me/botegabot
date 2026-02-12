@@ -46,9 +46,11 @@ export default function DashboardPage() {
             setJobs(jobsData);
         } catch (error) {
             console.error("Fetch error:", error);
-            if ((error as any).status === 401) {
+            // Handle 401 (Unauthorized) OR 404 (Agent Not Found - e.g. deleted agent)
+            if ((error as any).status === 401 || (error as any).status === 404) {
                 localStorage.removeItem("botega_api_key");
                 setApiKey("");
+                setAgent(null);
             }
         } finally {
             setLoading(false);

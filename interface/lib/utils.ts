@@ -15,7 +15,7 @@ export const formatCurrency = (amount: number | string) => {
   }).format(num).replace('$', '') + ' MON';
 };
 
-export const truncateAddress = (address: string) => {
-  if (!address) return '';
+export const truncateAddress = (address?: string | null) => {
+  if (!address || address === 'null') return 'No Address';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };

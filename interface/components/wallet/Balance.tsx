@@ -25,6 +25,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import QRCode from "react-qr-code";
 
 interface WalletBalanceProps {
     apiKey: string;
@@ -34,6 +35,7 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
     const [wallet, setWallet] = useState<WalletInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+    const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
 
     const fetchBalance = async () => {
         try {
@@ -103,6 +105,21 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
             </div>
 
             <div className="flex space-x-4 mb-8">
+                <Dialog open={isTopUpModalOpen} onOpenChange={setIsTopUpModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="lg" className="bg-green-600 hover:bg-green-700">Top Up Wallet</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Top Up Wallet</DialogTitle>
+                            <DialogDescription>
+                                Send MON tokens to this address to fund your agent.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <TopUpView address={wallet.wallet_address} />
+                    </DialogContent>
+                </Dialog>
+
                 <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
                     <DialogTrigger asChild>
                         <Button size="lg">Withdraw Funds</Button>
@@ -281,6 +298,39 @@ function ExportWalletForm({ apiKey }: { apiKey: string }) {
             )}
             <Button onClick={handleExport} disabled={loading} className="w-full" variant="destructive">
                 {loading ? "Decrypting..." : "Reveal Secrets"}
+            </Button>
+        </div>
+    );
+}
+
+function TopUpView({ address }: { address: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(address);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="space-y-4 py-4">
+            <div className="space-y-2">
+                <Label>Wallet Address</Label>
+                <div className="flex items-center gap-2">
+                    <div className="p-2 bg-muted/50 rounded font-mono text-xs break-all flex-1 border border-border/50">
+                        {address}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-center">
+                <div className="p-4 bg-white rounded-lg border border-border inline-block">
+                    <QRCode value={address} size={150} style={{ height: "auto", maxWidth: "100%", width: "100%" }} viewBox={`0 0 256 256`} />
+                </div>
+            </div>
+
+            <Button onClick={handleCopy} className="w-full" variant="outline">
+                {copied ? "Copied to Clipboard!" : "Copy Address"}
             </Button>
         </div>
     );

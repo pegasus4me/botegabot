@@ -75,10 +75,12 @@ async function registerAgent(req, res) {
 async function getMe(req, res) {
     try {
         const result = await db.query(
-            `SELECT agent_id, name, wallet_address, description, capabilities, 
-              reputation_score, total_jobs_completed, total_jobs_posted,
-              total_earned, total_spent, is_active, created_at
-       FROM agents WHERE agent_id = $1`,
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.description, a.capabilities, 
+              a.reputation_score, a.total_jobs_completed, a.total_jobs_posted,
+              a.total_earned, a.total_spent, a.is_active, a.created_at
+       FROM agents a
+       LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+       WHERE a.agent_id = $1`,
             [req.agentId]
         );
 
@@ -116,26 +118,33 @@ async function searchAgents(req, res) {
     try {
         const { capability, min_reputation } = req.query;
 
-        let query = 'SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle FROM agents WHERE is_active = true';
+        let query = `
+            SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
+                   a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle 
+            FROM agents a
+            LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+            WHERE a.is_active = true
+        `;
         const params = [];
 
         if (capability) {
             params.push(capability);
-            query += ` AND $${params.length} = ANY(capabilities)`;
+            query += ` AND $${params.length} = ANY(a.capabilities)`;
         }
 
         if (min_reputation) {
             params.push(parseInt(min_reputation));
-            query += ` AND reputation_score >= $${params.length}`;
+            query += ` AND a.reputation_score >= $${params.length}`;
         }
 
-        query += ' ORDER BY reputation_score DESC LIMIT 50';
+        query += ' ORDER BY a.reputation_score DESC LIMIT 50';
 
         const result = await db.query(query, params);
 
         const agents = result.rows.map(row => ({
             agent_id: row.agent_id,
             name: row.name,
+            wallet_address: row.wallet_address,
             capabilities: row.capabilities,
             reputation_score: row.reputation_score,
             total_jobs_completed: row.total_jobs_completed,
@@ -157,22 +166,37 @@ async function searchAgents(req, res) {
 async function getRecentAgents(req, res) {
     try {
         const result = await db.query(
-            `SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle, created_at 
-             FROM agents 
-             WHERE is_active = true 
-             ORDER BY created_at DESC 
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
+                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+             FROM agents a
+             LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+             WHERE a.is_active = true 
+             ORDER BY a.created_at DESC 
              LIMIT 10`
         );
 
-        const agents = result.rows.map(row => ({
-            agent_id: row.agent_id,
-            name: row.name,
-            capabilities: row.capabilities,
-            reputation_score: row.reputation_score,
-            total_jobs_completed: row.total_jobs_completed,
-            total_earned: row.total_earned,
-            twitter_handle: row.twitter_handle,
-            created_at: row.created_at
+        const agents = await Promise.all(result.rows.map(async row => {
+            let monBalance = '0';
+            try {
+                if (row.wallet_address) {
+                    monBalance = await blockchainService.getMonBalance(row.wallet_address);
+                }
+            } catch (err) {
+                console.error(`Failed to get balance for ${row.wallet_address}:`, err.message);
+            }
+
+            return {
+                agent_id: row.agent_id,
+                name: row.name,
+                wallet_address: row.wallet_address,
+                capabilities: row.capabilities,
+                reputation_score: row.reputation_score,
+                total_jobs_completed: row.total_jobs_completed,
+                total_earned: row.total_earned,
+                mon_balance: monBalance,
+                twitter_handle: row.twitter_handle,
+                created_at: row.created_at
+            };
         }));
 
         res.json({ agents });
@@ -197,15 +221,18 @@ async function getOnlineAgents(req, res) {
         }
 
         const result = await db.query(
-            `SELECT agent_id, name, capabilities, reputation_score, total_jobs_completed, total_earned, twitter_handle, created_at 
-             FROM agents 
-             WHERE agent_id = ANY($1) AND is_active = true`,
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
+                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+             FROM agents a
+             LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+             WHERE a.agent_id = ANY($1) AND a.is_active = true`,
             [onlineIds]
         );
 
         const agents = result.rows.map(row => ({
             agent_id: row.agent_id,
             name: row.name,
+            wallet_address: row.wallet_address,
             capabilities: row.capabilities,
             reputation_score: row.reputation_score,
             total_jobs_completed: row.total_jobs_completed,
@@ -228,9 +255,11 @@ async function getOnlineAgents(req, res) {
 async function getDailyActiveAgents(req, res) {
     try {
         const result = await db.query(
-            `SELECT a.agent_id, a.name, a.capabilities, a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.capabilities, 
+                    a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
              FROM agents a
              LEFT JOIN api_keys ak ON a.agent_id = ak.agent_id
+             LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
              WHERE a.is_active = true 
              AND (
                 a.created_at >= NOW() - INTERVAL '24 hours' OR 
@@ -243,6 +272,7 @@ async function getDailyActiveAgents(req, res) {
         const agents = result.rows.map(row => ({
             agent_id: row.agent_id,
             name: row.name,
+            wallet_address: row.wallet_address,
             capabilities: row.capabilities,
             reputation_score: row.reputation_score,
             total_jobs_completed: row.total_jobs_completed,
@@ -267,10 +297,12 @@ async function getAgentPublicProfile(req, res) {
         const { agentId } = req.params;
 
         const result = await db.query(
-            `SELECT agent_id, name, wallet_address, description, capabilities, 
-              reputation_score, total_jobs_completed, total_jobs_posted,
-              total_earned, total_spent, is_active, created_at, twitter_handle
-       FROM agents WHERE agent_id = $1`,
+            `SELECT a.agent_id, a.name, COALESCE(a.wallet_address, w.wallet_address) as wallet_address, a.description, a.capabilities, 
+              a.reputation_score, a.total_jobs_completed, a.total_jobs_posted,
+              a.total_earned, a.total_spent, a.is_active, a.created_at, a.twitter_handle
+       FROM agents a
+       LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+       WHERE a.agent_id = $1`,
             [agentId]
         );
 
@@ -333,6 +365,27 @@ async function getAgentHistory(req, res) {
     }
 }
 
+/**
+ * Get marketplace stats (total agents, jobs, etc.)
+ */
+async function getMarketplaceStats(req, res) {
+    try {
+        const agentResult = await db.query('SELECT COUNT(*) FROM agents WHERE is_active = true');
+        const jobResult = await db.query('SELECT COUNT(*) FROM jobs WHERE status = \'completed\'');
+        const earningsResult = await db.query('SELECT SUM(total_earned) FROM agents');
+
+        res.json({
+            total_agents: parseInt(agentResult.rows[0].count),
+            total_jobs_completed: parseInt(jobResult.rows[0].count),
+            total_earned: earningsResult.rows[0].sum || '0'
+        });
+
+    } catch (error) {
+        console.error('Get marketplace stats error:', error);
+        res.status(500).json({ error: 'Failed to get marketplace stats' });
+    }
+}
+
 module.exports = {
     registerAgent,
     getMe,
@@ -341,5 +394,6 @@ module.exports = {
     getOnlineAgents,
     getDailyActiveAgents,
     getAgentPublicProfile,
-    getAgentHistory
+    getAgentHistory,
+    getMarketplaceStats
 };

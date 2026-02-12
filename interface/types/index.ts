@@ -37,6 +37,7 @@ export interface Agent {
     total_jobs_posted: number;
     total_earned: string;
     total_spent: string;
+    mon_balance?: string;
     twitter_handle?: string;
     created_at: string;
 }

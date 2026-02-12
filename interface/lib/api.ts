@@ -1,6 +1,6 @@
 import { Agent, Job, WalletInfo } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.weppo.co/v1';
+const API_BASE = 'https://api.weppo.co/v1';
 
 class ApiError extends Error {
     constructor(public status: number, message: string) {
@@ -71,6 +71,9 @@ export const api = {
 
     getDailyActiveAgents: () =>
         request<{ agents: Agent[] }>('/agents/active-daily'),
+
+    getMarketplaceStats: () =>
+        request<{ total_agents: number; total_jobs_completed: number; total_earned: string }>('/agents/stats'),
 
     getAgentProfile: (agentId: string) =>
         request<{ agent: Agent }>(`/agents/${agentId}`),

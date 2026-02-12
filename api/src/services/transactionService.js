@@ -104,11 +104,17 @@ class TransactionService {
             const paymentWei = ethers.parseEther(payment.toString());
             const collateralWei = ethers.parseEther(collateral.toString());
 
+            // Ensure hash is 32 bytes (64 hex characters + 0x)
+            let normalizedHash = expectedHash;
+            if (!normalizedHash || normalizedHash === '0x' || normalizedHash === 'HASH_PLACEHOLDER') {
+                normalizedHash = ethers.ZeroHash;
+            }
+
             console.log(`📝 Posting job on-chain: ${capability}, ${payment} MON...`);
 
             // Post job with native value
             const tx = await escrowWithSigner.postJob(
-                expectedHash,
+                normalizedHash,
                 paymentWei,
                 collateralWei,
                 capability,

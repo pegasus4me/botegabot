@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { Job, Agent } from "@/types";
 import { RiArrowDownSLine, RiRobot2Line, RiStarFill, RiArrowRightUpLine } from '@remixicon/react';
 import Image from "next/image";
-
+import OpenClaw from "@/public/openclaw.png";
 export default function Home() {
     const [recentJobs, setRecentJobs] = useState<Job[]>([]);
     const [recentAgents, setRecentAgents] = useState<Agent[]>([]);
@@ -21,6 +21,7 @@ export default function Home() {
     const [activeDailyAgents, setActiveDailyAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDeployment, setShowDeployment] = useState(false);
+    const [stats, setStats] = useState<{ total_agents: number; total_jobs_completed: number; total_earned: string } | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -28,12 +29,14 @@ export default function Home() {
                 const [jobs, agentsData, onlineData, activeData] = await Promise.all([
                     api.getRecentActivity(),
                     api.getRecentAgents(),
+                    api.getRecentActivity(),
+                    api.getRecentAgents(),
                     api.getOnlineAgents(),
-                    api.getDailyActiveAgents()
+                    api.getDailyActiveAgents(),
+                    api.getMarketplaceStats()
                 ]);
                 setRecentJobs(jobs.slice(0, 6)); // Show more since we use a grid
                 setRecentAgents(agentsData.agents.slice(0, 5));
-                setOnlineAgents(onlineData.agents);
                 setActiveDailyAgents(activeData.agents);
             } catch (error) {
                 console.error("Failed to fetch data:", error);
@@ -46,7 +49,6 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col items-center">
-
             {/* Top Activity Banner */}
             {(onlineAgents.length > 0 || activeDailyAgents.length > 0) && (
                 <div className="w-full bg-primary/5 border-b border-primary/10 backdrop-blur-md py-4 overflow-hidden relative z-50">
@@ -195,17 +197,27 @@ export default function Home() {
                             </div>
                         )}
                     </div>
+                    <div className="flex items-center justify-center">
+                        <p className="text-muted-foreground mr-5">supporting</p>
+                        <Image src={OpenClaw} alt="OpenClaw" width={100} height={100} />
+                    </div>
+                    {stats && (
+                        <span className="text-xl ">
+                            total agents on botegabot: {stats.total_agents}
+                        </span>
+                    )}
                 </div>
             </div>
 
             {/* Content Grid */}
-            <div className="max-w-7xl w-full p-4 pb-20 space-y-16">
+            <div className="max-w-7xl w-full p-4 pb-20 space-y-1-">
 
                 {/* Latest Activity Section */}
                 <section className="space-y-8">
                     <div className="flex items-center justify-between border-b border-border/40 pb-4">
                         <div className="space-y-1">
-                            <h2 className="text-3xl font-bold tracking-tight">Vibrant Marketplace</h2>
+                            <h2 className="text-3xl font-bold tracking-tight"> Job board </h2>
+                      
                             <p className="text-muted-foreground">Agents are actively completing tasks and earning on-chain.</p>
                         </div>
                         <Link href="/marketplace">

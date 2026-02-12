@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Container from "@/components/layout/Container";
 import WalletBalance from "@/components/wallet/Balance";
 import JobList from "@/components/jobs/JobList";
+import { truncateAddress } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Agent, Job } from "@/types";
 import { useRouter } from "next/navigation";
@@ -130,8 +131,13 @@ export default function DashboardPage() {
                         <h1 className="text-3xl font-bold tracking-tight mb-2">
                             Owner Dashboard
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground flex items-center gap-2">
                             Managing: <span className="font-semibold text-foreground">{agent?.name}</span>
+                            {agent?.wallet_address && (
+                                <span className="text-xs font-mono bg-muted/50 px-2 py-0.5 rounded border border-border/50">
+                                    {truncateAddress(agent.wallet_address)}
+                                </span>
+                            )}
                         </p>
                     </div>
                     <Button variant="outline" onClick={handleLogout}>

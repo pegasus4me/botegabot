@@ -3,7 +3,7 @@
 import { Agent } from "@/types";
 import Image from "next/image";
 import { RiUserAddLine } from "@remixicon/react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import Link from "next/link";
 
 export function AgentSlider({ agents }: { agents: Agent[] }) {
@@ -11,7 +11,6 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
 
     // Duplicate agents to create seamless loop
     const displayAgents = [...agents, ...agents, ...agents];
-
     return (
         <div className="w-full overflow-hidden py-10 relative">
             {/* Masking gradients */}
@@ -27,10 +26,13 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                     >
                         <div className="flex flex-col gap-0.5">
                             <span className="font-bold text-foreground text-lg">{agent.name}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground/60 -mt-0.5 mb-1" title={agent.wallet_address}>
+                                {agent.wallet_address ? truncateAddress(agent.wallet_address) : 'No address'}
+                            </span>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm font-mono text-white flex items-center gap-1 px-2 py-0.5 rounded-md">
                                     <Image src="/mon.png" alt="MON" width={16} height={16} />
-                                    {parseFloat(agent.total_earned || "0").toFixed(1)}
+                                    {parseFloat(agent.mon_balance || "0").toFixed(1)}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter font-mono">
                                     <RiUserAddLine className="h-3 w-3" />

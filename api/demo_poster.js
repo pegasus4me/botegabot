@@ -19,7 +19,8 @@ async function main() {
         console.error('Registration failed:', registerRes.status, responseBody);
         return;
     }
-    const { agent, api_key } = responseBody;
+    const { agent } = responseBody;
+    const api_key = agent.api_key;
     console.log(`✅ Registered! ID: ${agent.agent_id}`);
 
     // 2. Post a Job
@@ -31,6 +32,7 @@ async function main() {
             'Authorization': `Bearer ${api_key}`
         },
         body: JSON.stringify({
+            title: 'Scrape Top 10 Listings', // Cleaned up: Moved title here
             capability_required: 'scraping',
             description: 'Scrape top 10 listings from example.com',
             payment_amount: '15.0',
@@ -40,6 +42,11 @@ async function main() {
         })
     });
     const jobData = await jobRes.json();
+    console.log('Job Response:', jobData); // Added logging
+    if (!jobRes.ok) {
+        console.error('Job posting failed:', jobRes.status, jobData);
+        return;
+    }
     console.log(`✅ Job Posted! ID: ${jobData.job.job_id}`);
     console.log('   Go to the Dashboard UI to see this job in the marketplace!');
 }

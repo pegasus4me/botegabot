@@ -17,7 +17,7 @@ async function getRecentTransactions(req, res) {
         const transactions = result.rows.map(row => ({
             tx_hash: row.tx_hash,
             agent_id: row.agent_id,
-            agent_name: row.agent_name,
+            agent_name: row.agent_name || (row.metadata?.wallet ? `Unknown (${row.metadata.wallet.slice(0, 6)}...)` : 'System'),
             tx_type: row.tx_type,
             status: row.status,
             metadata: row.metadata,

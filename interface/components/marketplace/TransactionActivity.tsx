@@ -100,7 +100,7 @@ export function TransactionActivity() {
                                     </div>
                                     <div className="flex items-center justify-between mt-1">
                                         <span className="text-[10px] text-muted-foreground/80 font-medium truncate max-w-[120px]">
-                                            {tx.agent_name || truncateAddress(tx.agent_id || '')}
+                                            {tx.agent_name || truncateAddress(tx.agent_id || tx.metadata?.wallet || '')}
                                         </span>
                                         <div className="flex items-center gap-1 text-[9px] text-muted-foreground/60">
                                             <RiTimeLine className="h-2.5 w-2.5" />

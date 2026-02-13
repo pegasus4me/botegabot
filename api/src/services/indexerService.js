@@ -1,4 +1,5 @@
 const blockchainService = require('./blockchainService');
+const blockchain = require('../config/blockchain');
 const db = require('../config/database');
 const { ethers } = require('ethers');
 
@@ -6,9 +7,13 @@ class IndexerService {
     /**
      * Start the on-chain indexer
      */
-    start() {
+    async start() {
         console.log('⛓️  Starting On-chain Indexer...');
 
+        // 1. Initial historical scan (last 5000 blocks)
+        await this.scanRecentBlocks(5000);
+
+        // 2. Listen for future events
         blockchainService.listenToEvents({
             onJobPosted: async (data) => this.handleJobPosted(data),
             onJobAccepted: async (data) => this.handleJobAccepted(data),
@@ -18,6 +23,61 @@ class IndexerService {
         });
 
         console.log('📡 Indexer listening to Monad blockchain events');
+    }
+
+    /**
+     * Scan recent blocks for missed events in chunks to respect RPC limits
+     */
+    async scanRecentBlocks(blockRange = 100) {
+        try {
+            const currentBlock = await blockchain.provider.getBlockNumber();
+            const startBlock = Math.max(0, currentBlock - blockRange);
+
+            console.log(`🔎 Scanning blocks ${startBlock} to ${currentBlock} for missed events (chunked)...`);
+
+            // Alchemy free tier limit is 10 blocks per eth_getLogs
+            const CHUNK_SIZE = 10;
+            for (let i = startBlock; i < currentBlock; i += CHUNK_SIZE) {
+                const toBlock = Math.min(i + CHUNK_SIZE - 1, currentBlock);
+                await this.scanBlockRange(i, toBlock);
+            }
+
+            console.log(`✅ Historical scan complete.`);
+        } catch (err) {
+            console.error('❌ Historical scan failed:', err.message);
+        }
+    }
+
+    /**
+     * Scan a specific block range for events
+     */
+    async scanBlockRange(fromBlock, toBlock) {
+        // Scan JobEscrow events
+        const jobPostedEvents = await blockchain.jobEscrow.queryFilter('JobPosted', fromBlock, toBlock);
+        for (const event of jobPostedEvents) {
+            const { jobId, poster, payment, collateral, capability, deadline } = event.args;
+            await this.handleJobPosted({
+                jobId: Number(jobId),
+                poster,
+                payment: ethers.formatEther(payment),
+                collateral: ethers.formatEther(collateral),
+                capability,
+                deadline: Number(deadline),
+                txHash: event.transactionHash
+            });
+        }
+
+        // Scan AgentRegistry events
+        const agentRegEvents = await blockchain.agentRegistry.queryFilter('AgentRegistered', fromBlock, toBlock);
+        for (const event of agentRegEvents) {
+            const { wallet, capabilities, timestamp } = event.args;
+            await this.handleAgentRegistered({
+                wallet,
+                capabilities,
+                timestamp: Number(timestamp),
+                txHash: event.transactionHash
+            });
+        }
     }
 
     /**
@@ -64,7 +124,8 @@ class IndexerService {
             chain_job_id: data.jobId,
             payment: data.payment,
             collateral: data.collateral,
-            capability: data.capability
+            capability: data.capability,
+            wallet: data.poster
         });
 
         // If it's a new job from another instance/agent, we should ideally add it to 'jobs' too
@@ -75,7 +136,8 @@ class IndexerService {
         const agentId = await this.getAgentIdByWallet(data.executor);
         await this.recordTransaction(data.txHash, agentId, 'accept_job', {
             chain_job_id: data.jobId,
-            collateral: data.collateral
+            collateral: data.collateral,
+            wallet: data.executor
         });
     }
 
@@ -84,7 +146,8 @@ class IndexerService {
         await this.recordTransaction(data.txHash, agentId, 'submit_result', {
             chain_job_id: data.jobId,
             verified: data.verified,
-            payment: data.payment
+            payment: data.payment,
+            wallet: data.executor
         });
     }
 

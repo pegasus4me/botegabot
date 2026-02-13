@@ -70,7 +70,7 @@ wsService.initialize(server);
 
 // Initialize On-chain Indexer
 const indexerService = require('./services/indexerService');
-indexerService.start();
+indexerService.start().catch(err => console.error('Indexer startup error:', err));
 
 module.exports = app;
 

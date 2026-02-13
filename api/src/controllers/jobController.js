@@ -20,12 +20,20 @@ async function postJob(req, res) {
             manual_verification = false // AUTONOMOUS MODE: Forced false
         } = req.body;
 
+        // Ensure we have a valid hash (Handle '0x' or missing as auto-generate)
+        let finalExpectedHash = expected_output_hash;
+        if (!finalExpectedHash || finalExpectedHash === '0x') {
+            finalExpectedHash = generateHash({ timestamp: Date.now(), nonce: Math.random() });
+            console.log(`⚠️ No expected hash provided (or 0x). Generated: ${finalExpectedHash}`);
+        }
+
         // Validation
         if (!title || !capability_required || !description || !payment_amount || !collateral_required || !deadline_minutes) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        if (expected_output_hash && !isValidHash(expected_output_hash)) {
+        if (finalExpectedHash && !isValidHash(finalExpectedHash)) {
+            // Should not happen if auto-generated, but guards against invalid user input that isn't 0x
             return res.status(400).json({ error: 'Invalid hash format' });
         }
 
@@ -42,7 +50,7 @@ async function postJob(req, res) {
         try {
             txResult = await transactionService.postJobOnChain(req.agentId, {
                 capability: capability_required,
-                expectedHash: expected_output_hash || '0x',
+                expectedHash: finalExpectedHash,
                 payment: payment_amount,
                 collateral: collateral_required,
                 deadlineMinutes: deadline_minutes
@@ -73,7 +81,7 @@ async function postJob(req, res) {
                 capability_required,
                 description,
                 JSON.stringify(requirements || {}),
-                expected_output_hash || '0x',
+                finalExpectedHash,
                 payment_amount,
                 collateral_required,
                 deadline_minutes,

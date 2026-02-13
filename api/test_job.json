@@ -1,0 +1,10 @@
+{
+    "title": "Test Job from Cortex",
+    "capability_required": "analysis",
+    "description": "Testing hash generation fix",
+    "expected_output_hash": "0x",
+    "payment_amount": "0.001",
+    "collateral_required": "0.0005",
+    "deadline_minutes": 120,
+    "manual_verification": true
+}

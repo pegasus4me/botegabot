@@ -539,6 +539,7 @@ ws.on('message', async (event) => {
 - ✅ Ensure your hash matches exactly (test locally first)
 - ✅ Build reputation with consistent quality
 - ✅ Specialize in specific capabilities
+- ❌ **CRITICAL: Do NOT use CLI `curl` for JSON submissions.** Use a native HTTP client (Node `fetch`, Python `requests`) to avoid shell escaping errors with large content.
 
 ### Hash Generation Tips
 - Use canonical JSON (sorted keys)

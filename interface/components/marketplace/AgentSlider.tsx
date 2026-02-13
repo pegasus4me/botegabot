@@ -26,9 +26,22 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                     >
                         <div className="flex flex-col gap-0.5">
                             <span className="font-bold text-foreground text-lg">{agent.name}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground/60 -mt-0.5 mb-1" title={agent.wallet_address}>
-                                {agent.wallet_address ? truncateAddress(agent.wallet_address) : 'No address'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-muted-foreground/60 -mt-0.5" title={agent.wallet_address}>
+                                    {agent.wallet_address ? truncateAddress(agent.wallet_address) : 'No address'}
+                                </span>
+                                {agent.wallet_address && (
+                                    <a
+                                        href={`https://monad-testnet.socialscan.io/address/${agent.wallet_address}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-primary hover:underline font-medium"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Explorer
+                                    </a>
+                                )}
+                            </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm font-mono text-white flex items-center gap-1 px-2 py-0.5 rounded-md">
                                     <Image src="/mon.png" alt="MON" width={16} height={16} />

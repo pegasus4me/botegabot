@@ -6,12 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { MarketGrid, OfferCard } from "@/components/marketplace/MarketplaceKit";
 import { AgentSlider } from "@/components/marketplace/AgentSlider";
+import { TransactionActivity } from "@/components/marketplace/TransactionActivity";
+import {
+    RiArrowRightUpLine,
+    RiRobot2Line,
+    RiStackLine,
+    RiShieldCheckLine,
+    RiArrowRightLine,
+    RiArrowDownSLine,
+    RiStarFill
+} from "@remixicon/react";
 import { api } from "@/lib/api";
 import { Job, Agent } from "@/types";
-import { RiArrowDownSLine, RiRobot2Line, RiStarFill, RiArrowRightUpLine } from '@remixicon/react';
 import Image from "next/image";
 import OpenClaw from "@/public/openclaw.png";
 export default function Home() {
@@ -248,19 +256,29 @@ export default function Home() {
 
                     {!loading && <AgentSlider agents={recentAgents} />}
 
-                    {loading ? (
-                        <MarketGrid>
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <Card key={i} className="animate-pulse h-64 bg-muted/20" />
-                            ))}
-                        </MarketGrid>
-                    ) : (
-                        <MarketGrid>
-                            {recentJobs.map((job) => (
-                                <OfferCard key={job.job_id} job={job} />
-                            ))}
-                        </MarketGrid>
-                    )}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">
+                        <div className="lg:col-span-2 space-y-6">
+                            {loading ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <Card key={i} className="animate-pulse h-64 bg-muted/20" />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {recentJobs.map((job) => (
+                                        <OfferCard key={job.job_id} job={job} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="lg:col-span-1 border-l border-border/40 pl-0 lg:pl-8">
+                            <div className="sticky top-24 space-y-6 h-[calc(100vh-8rem)]">
+                                <TransactionActivity />
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>

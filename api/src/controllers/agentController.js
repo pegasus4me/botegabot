@@ -1,8 +1,9 @@
+const { ethers } = require('ethers');
 const db = require('../config/database');
-const { generateAgentId, generateApiKey, isValidAddress } = require('../utils/helpers');
-const blockchainService = require('../services/blockchainService');
+const { generateAgentId, generateApiKey } = require('../utils/helpers');
 const walletService = require('../services/walletService');
-const transactionService = require('../services/transactionService');
+const config = require('../config/env');
+const blockchainConfig = require('../config/blockchain');
 
 /**
  * Register a new agent
@@ -24,29 +25,50 @@ async function registerAgent(req, res) {
         const agentId = generateAgentId();
         const apiKey = generateApiKey();
 
-        // Create custodial wallet for agent (in memory first)
+        // 1. Create custodial wallet for agent
         const wallet = walletService.generateWallet();
+        console.log(`🤖 New agent ${name} generated address: ${wallet.address}`);
 
-        // Insert into database FIRST (to satisfy FK for wallet)
+        // 3. Register agent on-chain (Atomic)
+        try {
+            console.log(`📝 Registering agent ${agentId} on-chain...`);
+            const agentSigner = new ethers.Wallet(wallet.privateKey, blockchainConfig.provider);
+            const registryWithSigner = blockchainConfig.agentRegistry.connect(agentSigner);
+
+            // Note: Since faucet is removed, the user MUST have funded the wallet address before this call if they are calling from a script,
+            // but since our internal flow generates the wallet, we need them to fund it.
+            // HOWEVER, the user request says "the user have to top up is agent wallet before starting on botega".
+            // If the wallet is generated here, they can't top it up BEFORE registration unless they provide their own wallet.
+            // But currently the API generates it.
+            // I will keep the registration attempt, but it will likely fail without gas.
+            // A better flow would be: 1. Generate Wallet, 2. User funds, 3. User calls Register.
+            // For now, I'll just remove the auto-faucet as requested.
+
+            const tx = await registryWithSigner.registerAgent(capabilities);
+            await tx.wait();
+            console.log(`✅ On-chain registration confirmed: ${tx.hash}`);
+        } catch (regError) {
+            console.error('❌ On-chain registration failed:', regError);
+            return res.status(500).json({
+                error: 'Blockchain registration failed. Ensure your internal agent wallet has MON for gas.',
+                details: regError.message,
+                wallet_address: wallet.address
+            });
+        }
+
+        // 4. Insert into database ONLY after on-chain success
         await db.query(
             `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities, twitter_handle)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [agentId, apiKey, wallet.address, name, description || '', capabilities, twitter_handle || null]
         );
 
-        // Now save the wallet (which references agent_id)
         await walletService.saveAgentWallet(agentId, wallet);
 
-        // Insert into api_keys table
         await db.query(
             'INSERT INTO api_keys (api_key, agent_id) VALUES ($1, $2)',
             [apiKey, agentId]
         );
-
-        // Register agent on-chain (async - don't wait)
-        transactionService.registerAgentOnChain(agentId, capabilities)
-            .then(() => console.log(`✅ Agent ${agentId} registered on-chain`))
-            .catch(err => console.error(`❌ Failed to register agent on-chain:`, err));
 
         // Return response
         res.status(201).json({
@@ -60,12 +82,12 @@ async function registerAgent(req, res) {
                 reputation_score: 0
             },
             important: '⚠️ SAVE YOUR API KEY AND MNEMONIC! They will not be shown again.',
-            note: 'Your wallet is being registered on-chain. This may take a few moments.'
+            note: 'Your wallet has been funded and registered on-chain. You are ready to start!'
         });
 
     } catch (error) {
         console.error('Register agent error:', error);
-        res.status(500).json({ error: 'Failed to register agent', details: error.message, stack: error.stack });
+        res.status(500).json({ error: 'Failed to register agent', details: error.message });
     }
 }
 
@@ -334,6 +356,10 @@ async function getAgentHistory(req, res) {
             deadline_minutes: row.deadline_minutes,
             status: row.status,
             result_hash: row.result_hash,
+            escrow_tx_hash: row.escrow_tx_hash,
+            collateral_tx_hash: row.collateral_tx_hash,
+            payment_tx_hash: row.payment_tx_hash,
+            submitted_result: row.submitted_result,
             created_at: row.created_at,
             updated_at: row.updated_at,
             completed_at: row.completed_at

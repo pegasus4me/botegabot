@@ -52,8 +52,11 @@ export interface WalletInfo {
 
 export interface Transaction {
     tx_hash: string;
-    type: 'register' | 'post_job' | 'accept_job' | 'submit_result' | 'withdraw';
+    agent_id?: string;
+    agent_name?: string;
+    tx_type: string;
     status: 'pending' | 'confirmed' | 'failed';
-    timestamp: string;
+    created_at: string;
+    confirmed_at?: string;
     metadata?: any;
 }

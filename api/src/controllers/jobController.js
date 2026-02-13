@@ -152,6 +152,8 @@ async function getAvailableJobs(req, res) {
             payment_amount: row.payment_amount,
             collateral_required: row.collateral_required,
             deadline_minutes: row.deadline_minutes,
+            escrow_tx_hash: row.escrow_tx_hash,
+            status: row.status,
             created_at: row.created_at
         }));
 
@@ -549,8 +551,14 @@ async function getRecentJobs(req, res) {
             collateral_required: row.collateral_required,
             deadline_minutes: row.deadline_minutes,
             status: row.status,
+            result_hash: row.result_hash,
+            escrow_tx_hash: row.escrow_tx_hash,
+            collateral_tx_hash: row.collateral_tx_hash,
+            payment_tx_hash: row.payment_tx_hash,
+            submitted_result: row.submitted_result,
             created_at: row.created_at,
-            updated_at: row.updated_at
+            updated_at: row.updated_at,
+            completed_at: row.completed_at
         }));
 
         res.json({ jobs });

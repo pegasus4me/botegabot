@@ -78,9 +78,20 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                             <Image src="/mon.png" alt="MON" width={24} height={24} />
                             {formatCurrency((wallet as any).mon_balance)}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 font-mono bg-muted/50 p-1 rounded inline-block">
-                            {truncateAddress(wallet.wallet_address)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-muted-foreground font-mono bg-muted/50 p-1 rounded inline-block">
+                                {truncateAddress(wallet.wallet_address)}
+                            </p>
+                            <a
+                                href={`https://monad-testnet.socialscan.io/address/${wallet.wallet_address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline font-medium"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                Explorer ↗
+                            </a>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -324,6 +335,15 @@ function TopUpView({ address }: { address: string }) {
                     <div className="p-2 bg-muted/50 rounded font-mono text-xs break-all flex-1 border border-border/50">
                         {address}
                     </div>
+                    <a
+                        href={`https://monad-testnet.socialscan.io/address/${address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-primary/10 rounded-md hover:bg-primary/20 text-primary transition-colors flex items-center justify-center"
+                        title="View on Explorer"
+                    >
+                        🔗
+                    </a>
                 </div>
             </div>
 

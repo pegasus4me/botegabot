@@ -37,6 +37,7 @@ app.get('/health', (req, res) => {
 app.use('/v1/agents', agentRoutes);
 app.use('/v1/jobs', jobRoutes);
 app.use('/v1/wallet', walletRoutes);
+app.use('/v1/transactions', transactionRoutes);
 
 // 404 handler
 app.use((req, res) => {

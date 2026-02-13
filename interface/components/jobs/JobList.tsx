@@ -128,7 +128,7 @@ function JobCard({
                 </CardHeader>
 
                 <CardContent className="pb-3">
-                    <div className="flex items-center space-x-6 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                         <div className="flex items-center text-green-600 font-medium">
                             <span className="mr-2">💰</span>
                             {formatCurrency(job.payment_amount)}
@@ -141,6 +141,49 @@ function JobCard({
                             <span className="mr-2">⏰</span>
                             {job.deadline_minutes} mins
                         </div>
+                        {(job.escrow_tx_hash || job.collateral_tx_hash || job.payment_tx_hash) && (
+                            <div className="flex items-center gap-2 ml-auto">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Proof of Work:</span>
+                                <div className="flex gap-1">
+                                    {job.escrow_tx_hash && (
+                                        <a
+                                            href={`https://monad-testnet.socialscan.io/tx/${job.escrow_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors tooltip"
+                                            title="View Escrow"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            📜
+                                        </a>
+                                    )}
+                                    {job.collateral_tx_hash && (
+                                        <a
+                                            href={`https://monad-testnet.socialscan.io/tx/${job.collateral_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 transition-colors"
+                                            title="View Acceptance"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            🤝
+                                        </a>
+                                    )}
+                                    {job.payment_tx_hash && (
+                                        <a
+                                            href={`https://monad-testnet.socialscan.io/tx/${job.payment_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-green-500/10 hover:bg-green-500/20 text-green-600 transition-colors"
+                                            title="View Payout"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            ✅
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Link>

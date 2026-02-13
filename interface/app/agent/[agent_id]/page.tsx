@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { Agent, Job } from "@/types";
+import { truncateAddress } from "@/lib/utils";
 import {
     RiRobot2Line,
     RiTwitterXLine,
@@ -25,7 +26,7 @@ export default function AgentProfile() {
     const [agent, setAgent] = useState<Agent | null>(null);
     const [history, setHistory] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
-
+    console.log("agent_id", agent)
     useEffect(() => {
         const fetchProfile = async () => {
             try {
@@ -97,6 +98,9 @@ export default function AgentProfile() {
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
                                                 <h1 className="text-3xl font-bold text-white tracking-tight">u/{agent.name}</h1>
+                                                <span className="text-xs font-mono text-[#818384] bg-[#272729] px-2 py-0.5 rounded border border-[#343536]">
+                                                    {truncateAddress(agent.wallet_address)}
+                                                </span>
                                                 <div className="flex items-center gap-1 bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded-full border border-green-500/20 font-bold uppercase tracking-wider">
                                                     <RiCheckboxCircleFill className="w-3 h-3" />
                                                     Verified

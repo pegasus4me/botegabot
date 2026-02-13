@@ -17,5 +17,6 @@ router.post('/', jobController.postJob);
 router.post('/:job_id/accept', jobController.acceptJob);
 router.post('/:job_id/submit', jobController.submitResult);
 router.post('/:job_id/validate', jobController.validateJob);
+router.post('/:job_id/rate', jobController.rateJob);
 
 module.exports = router;

@@ -14,23 +14,26 @@ export default function MarketplacePage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [filter, setFilter] = useState("");
     const [apiKey, setApiKey] = useState<string>("");
-    const [recentJobs, setRecentJobs] = useState<Job[]>([]);
     const [recentAgents, setRecentAgents] = useState<Agent[]>([]);
     const [onlineAgents, setOnlineAgents] = useState<Agent[]>([]);
     const [activeDailyAgents, setActiveDailyAgents] = useState<Agent[]>([]);
-    const [showDeployment, setShowDeployment] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const storedKey = localStorage.getItem("botega_api_key");
+        if (storedKey) {
+            setApiKey(storedKey);
+        }
+
         const fetchData = async () => {
             try {
-                const [jobs, agentsData, onlineData, activeData] = await Promise.all([
+                const [jobsData, agentsData, onlineData, activeData] = await Promise.all([
                     api.getRecentActivity(),
                     api.getRecentAgents(),
                     api.getOnlineAgents(),
                     api.getDailyActiveAgents()
                 ]);
-                setRecentJobs(jobs.slice(0, 6)); // Show more since we use a grid
+                setJobs(jobsData);
                 setRecentAgents(agentsData.agents.slice(0, 5));
                 setOnlineAgents(onlineData.agents);
                 setActiveDailyAgents(activeData.agents);
@@ -42,33 +45,25 @@ export default function MarketplacePage() {
         };
         fetchData();
     }, []);
-    useEffect(() => {
-        const storedKey = localStorage.getItem("botega_api_key");
-        if (storedKey) {
-            setApiKey(storedKey);
-        }
-        // Always fetch available jobs, even if not logged in
-        fetchJobs(storedKey || "");
-    }, []);
-
-    const fetchJobs = async (key: string) => {
-        try {
-            const data = await api.getJobs(key);
-            setJobs(data);
-        } catch (error) {
-            console.error("Failed to fetch jobs:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // Real-time updates
     useWebSocketEvent('job_posted', (newJob: Job) => {
-        setJobs(prev => [newJob, ...prev]);
+        setJobs(prev => {
+            if (prev.find(j => j.job_id === newJob.job_id)) return prev;
+            return [newJob, ...prev];
+        });
     });
 
-    useWebSocketEvent('job_accepted', (data: { job_id: string }) => {
-        setJobs(prev => prev.filter(j => j.job_id !== data.job_id));
+    useWebSocketEvent('job_accepted', (data: { job_id: string; executor?: string }) => {
+        setJobs(prev => prev.map(j =>
+            j.job_id === data.job_id ? { ...j, status: 'accepted' as any, executor_id: data.executor } : j
+        ));
+    });
+
+    useWebSocketEvent('job_completed', (data: { job_id: string; verified: boolean }) => {
+        setJobs(prev => prev.map(j =>
+            j.job_id === data.job_id ? { ...j, status: (data.verified ? 'completed' : 'failed') as any } : j
+        ));
     });
 
     const handleAcceptJob = async (jobId: string, collateral: string) => {
@@ -78,7 +73,9 @@ export default function MarketplacePage() {
             await api.acceptJob(apiKey, jobId, collateral);
             alert("Job accepted! Collateral locked.");
             // Optimistic update
-            setJobs(prev => prev.filter(j => j.job_id !== jobId));
+            setJobs(prev => prev.map(j =>
+                j.job_id === jobId ? { ...j, status: 'accepted' as any } : j
+            ));
         } catch (error: any) {
             alert(error.message || "Failed to accept job");
         }

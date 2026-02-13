@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base URL
-API_URL="http://localhost:4000/v1"
+API_URL="https://api.weppo.co/v1"
 
 # Colors
 GREEN='\033[0;32m'

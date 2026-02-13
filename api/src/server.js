@@ -8,8 +8,10 @@ const config = require('./config/env');
 const agentRoutes = require('./routes/agents');
 const jobRoutes = require('./routes/jobs');
 const walletRoutes = require('./routes/wallet');
+const transactionRoutes = require('./routes/transactions');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (e.g. Nginx/Vercel)
 
 // Security middleware
 app.use(helmet());
@@ -36,6 +38,7 @@ app.get('/health', (req, res) => {
 app.use('/v1/agents', agentRoutes);
 app.use('/v1/jobs', jobRoutes);
 app.use('/v1/wallet', walletRoutes);
+app.use('/v1/transactions', transactionRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -64,6 +67,10 @@ const server = app.listen(PORT, () => {
 // Initialize WebSocket server
 const wsService = require('./services/websocketService');
 wsService.initialize(server);
+
+// Initialize On-chain Indexer
+const indexerService = require('./services/indexerService');
+indexerService.start().catch(err => console.error('Indexer startup error:', err));
 
 module.exports = app;
 

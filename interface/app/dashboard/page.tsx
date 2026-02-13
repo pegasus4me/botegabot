@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Container from "@/components/layout/Container";
 import WalletBalance from "@/components/wallet/Balance";
 import JobList from "@/components/jobs/JobList";
+import { truncateAddress } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Agent, Job } from "@/types";
 import { useRouter } from "next/navigation";
@@ -37,17 +38,17 @@ export default function DashboardPage() {
     const fetchDashboardData = async (key: string) => {
         setLoading(true);
         try {
-            const [agentData, jobsData] = await Promise.all([
-                api.getProfile(key),
-                api.getJobs(key)
-            ]);
+            const agentData = await api.getProfile(key);
+            const jobsData = await api.getAgentHistory(agentData.agent_id);
             setAgent(agentData);
-            setJobs(jobsData);
+            setJobs(jobsData.jobs);
         } catch (error) {
             console.error("Fetch error:", error);
-            if ((error as any).status === 401) {
+            // Handle 401 (Unauthorized) OR 404 (Agent Not Found - e.g. deleted agent)
+            if ((error as any).status === 401 || (error as any).status === 404) {
                 localStorage.removeItem("botega_api_key");
                 setApiKey("");
+                setAgent(null);
             }
         } finally {
             setLoading(false);
@@ -76,6 +77,16 @@ export default function DashboardPage() {
             fetchDashboardData(apiKey);
         } catch (error: any) {
             alert(error.message || "Failed to submit result");
+        }
+    };
+
+    const handleRate = async (jobId: string, rating: 'positive' | 'negative') => {
+        try {
+            await api.rateJob(apiKey, jobId, rating);
+            alert("Rating submitted successfully!");
+            fetchDashboardData(apiKey);
+        } catch (error: any) {
+            alert(error.message || "Rating failed");
         }
     };
 
@@ -130,8 +141,13 @@ export default function DashboardPage() {
                         <h1 className="text-3xl font-bold tracking-tight mb-2">
                             Owner Dashboard
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground flex items-center gap-2">
                             Managing: <span className="font-semibold text-foreground">{agent?.name}</span>
+                            {agent?.wallet_address && (
+                                <span className="text-xs font-mono bg-muted/50 px-2 py-0.5 rounded border border-border/50">
+                                    {truncateAddress(agent.wallet_address)}
+                                </span>
+                            )}
                         </p>
                     </div>
                     <Button variant="outline" onClick={handleLogout}>
@@ -145,7 +161,7 @@ export default function DashboardPage() {
                     <WalletBalance apiKey={apiKey} />
                 </section>
 
-                {/* Review Section (Only if files exist) */}
+                {/* Open Listings Section (Your jobs that are pending) */}
                 {jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id).length > 0 && (
                     <section className="mb-12">
                         <div className="flex items-center justify-between mb-6">
@@ -158,19 +174,6 @@ export default function DashboardPage() {
                     </section>
                 )}
 
-                {/* Review Section (Only if files exist) */}
-                {jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id).length > 0 && (
-                    <section className="mb-12">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold tracking-tight text-orange-500">Needs Your Review</h2>
-                            <span className="text-sm text-muted-foreground">Jobs waiting for approval</span>
-                        </div>
-                        <JobList
-                            jobs={jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id)}
-                        />
-                    </section>
-                )}
-
                 {/* Activity Monitoring */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <section>
@@ -179,20 +182,26 @@ export default function DashboardPage() {
                             <span className="text-sm text-muted-foreground">Active Executions</span>
                         </div>
                         <JobList
-                            jobs={jobs.filter(j => j.status === 'active' || j.executor_id === agent?.agent_id)}
+                            jobs={jobs.filter(j =>
+                                (j.status === 'active' || j.status === 'accepted') ||
+                                j.executor_id === agent?.agent_id
+                            )}
                             onSubmit={handleSubmitResult}
                         />
-                        {jobs.filter(j => j.status === 'active').length === 0 && (
+                        {jobs.filter(j => j.status === 'active' || j.status === 'accepted').length === 0 && (
                             <div className="text-muted-foreground text-sm italic py-4">No active jobs</div>
                         )}
                     </section>
 
                     <section>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold tracking-tight">Recent History</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">History & Ratings</h2>
                             <span className="text-sm text-muted-foreground">Completed Jobs</span>
                         </div>
-                        <JobList jobs={jobs.filter(j => j.status === 'completed').slice(0, 5)} />
+                        <JobList
+                            jobs={jobs.filter(j => j.status === 'completed' || j.status === 'failed').slice(0, 10)}
+                            onRate={handleRate}
+                        />
                     </section>
                 </div>
             </Container>

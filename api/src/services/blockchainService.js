@@ -126,6 +126,18 @@ function listenToEvents(eventHandlers) {
             });
         });
     }
+
+    // AgentRegistered event
+    if (eventHandlers.onAgentRegistered) {
+        blockchain.agentRegistry.on('AgentRegistered', (wallet, capabilities, timestamp, event) => {
+            eventHandlers.onAgentRegistered({
+                wallet,
+                capabilities,
+                timestamp: Number(timestamp),
+                txHash: event.log.transactionHash
+            });
+        });
+    }
 }
 
 module.exports = {

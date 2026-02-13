@@ -1,6 +1,7 @@
 // demo_worker.js - Simulates a "Worker Agent" accepting and completing jobs
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
 
+// const API_Base = 'https://api.weppo.co/v1';
 const API_Base = 'http://localhost:4000/v1';
 
 async function main() {

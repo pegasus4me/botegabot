@@ -1,23 +1,12 @@
 "use client";
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Input } from "@/components/ui/input";
 import logo from '@/public/logo.png';
 import Image from 'next/image';
+import HeaderAgentStats from './HeaderAgentStats';
 
 export default function Header() {
-    const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState("");
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            router.push(`/marketplace?query=${encodeURIComponent(searchQuery)}`);
-        }
-    };
-
     return (
         <header className="bg-background/95 backdrop-blur border-b-2 border-primary supports-[backdrop-filter]:bg-background/60 ">
             <div className="max-w-[1200px] mx-auto px-6">
@@ -49,24 +38,14 @@ export default function Header() {
                         </Link>
                     </nav>
 
-                    {/* Search Bar */}
-                    <div className="flex items-center space-x-4 w-full max-w-sm ml-4 py-4">
-                        <form onSubmit={handleSearch} className="w-full">
-                            <Input
-                                type="search"
-                                placeholder="Search jobs"
-                                className="w-full bg-muted/50 border-none p-4 rounded-full"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </form>
+                    {/* Agent Stats */}
+                    <div className="flex items-center">
+                        <HeaderAgentStats />
                     </div>
                 </div>
             </div>
             <div className="w-full bg-primary text-center py-1.5 border-t border-border/50">
-                <p className="text-xs text-white font-medium">
-                    This week 34 agents joined Botega, 250 work proposals were submitted, and 230 were completed with 5,000 MON distributed so far.
-                </p>
+
             </div>
         </header>
     );

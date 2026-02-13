@@ -1,6 +1,6 @@
-import { Agent, Job, WalletInfo } from '@/types';
+import { Agent, Job, WalletInfo, Transaction } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.weppo.co/v1';
 
 class ApiError extends Error {
     constructor(public status: number, message: string) {
@@ -30,6 +30,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
             console.error('Failed to parse JSON response:', e);
             throw new ApiError(response.status, 'Invalid response from server');
         }
+
+        if (!response.ok) {
+            throw new ApiError(response.status, data?.error || data?.message || 'Something went wrong');
+        }
+
+        return data as T;
     } else {
         const text = await response.text();
         if (!response.ok) {
@@ -37,18 +43,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         }
         return text as unknown as T;
     }
-
-    if (!response.ok) {
-        throw new ApiError(response.status, data?.error || 'Something went wrong');
-    }
-
-    return data;
 }
 
 export const api = {
     // Agent
-    registerAgent: (data: { name: string; capabilities: string[] }) =>
-        request<{ agent: Agent; api_key: string }>('/agents/register', {
+    registerAgent: (data: Partial<Agent>) =>
+        request<{ api_key: string; agent: Agent }>('/agents/register', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
@@ -70,7 +70,10 @@ export const api = {
         request<{ agents: Agent[] }>('/agents/online'),
 
     getDailyActiveAgents: () =>
-        request<{ agents: Agent[] }>('/agents/active-daily'),
+        request<{ agents: Agent[] }>('/agents/daily-active'),
+
+    getMarketplaceStats: () =>
+        request<{ total_agents: number; total_jobs_completed: number; total_earned: string }>('/agents/stats'),
 
     getAgentProfile: (agentId: string) =>
         request<{ agent: Agent }>(`/agents/${agentId}`),
@@ -137,5 +140,16 @@ export const api = {
     exportWallet: (apiKey: string) =>
         request<{ mnemonic: string; private_key: string }>('/wallet/export', {
             headers: { Authorization: `Bearer ${apiKey}` },
+        }),
+
+    // Transactions
+    getTransactions: () =>
+        request<{ transactions: Transaction[] }>('/transactions').then(data => data.transactions),
+
+    rateJob: (apiKey: string, jobId: string, rating: 'positive' | 'negative', feedback?: string) =>
+        request<{ message: string }>(`/jobs/${jobId}/rate`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ rating, feedback }),
         }),
 };

@@ -29,6 +29,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 
+const DescriptionFormatter = ({ text }: { text: string }) => {
+    if (!text) return null;
+
+    // Detect JSON pattern { ... }
+    const parts = text.split(/(\{[\s\S]*\})/g);
+
+    return (
+        <div className="space-y-4">
+            {parts.map((part, i) => {
+                if (part.startsWith('{') && part.endsWith('}')) {
+                    try {
+                        // Validate it is indeed JSON
+                        const json = JSON.parse(part);
+                        return (
+                            <div key={i} className="relative group">
+                                <div className="absolute -top-3 left-4 bg-muted px-2 py-0.5 rounded text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border/50 z-10">
+                                    Expected JSON Schema
+                                </div>
+                                <pre className="p-6 bg-black/60 rounded-2xl border border-primary/20 font-mono text-sm overflow-x-auto text-primary/90 shadow-2xl backdrop-blur-md">
+                                    {JSON.stringify(json, null, 2)}
+                                </pre>
+                            </div>
+                        );
+                    } catch (e) {
+                        // Fallback to text if parsing fails
+                        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+                    }
+                }
+                return <span key={i} className="whitespace-pre-wrap leading-relaxed block text-foreground/80">{part}</span>;
+            })}
+        </div>
+    );
+};
+
 export default function JobDetailPage() {
     const params = useParams()
     const router = useRouter()
@@ -40,6 +74,7 @@ export default function JobDetailPage() {
     const [accepting, setAccepting] = React.useState(false)
     const [apiKey, setApiKey] = React.useState<string | null>(null)
     const [currentAgentId, setCurrentAgentId] = React.useState<string | null>(null)
+    const [rated, setRated] = React.useState(false)
 
     React.useEffect(() => {
         const key = typeof window !== 'undefined' ? localStorage.getItem('botega_api_key') : null
@@ -86,19 +121,22 @@ export default function JobDetailPage() {
     }
 
 
-    const handleValidateJob = async (approved: boolean) => {
+    const handleRateJob = async (rating: 'positive' | 'negative') => {
         if (!apiKey || !job) return
 
         try {
-            await api.validateJob(apiKey, job.job_id, approved)
-            alert(approved ? "Job approved and settled!" : "Job rejected.")
-            // Refresh
-            const data = await api.getJob(apiKey, job.job_id)
-            setJob(data.job as any)
+            await api.rateJob(apiKey, job.job_id, rating)
+            setRated(true)
+            if (rating === 'negative') {
+                alert("Report submitted. Agent reputation has been slashed.")
+            } else {
+                alert("Thank you for your feedback!")
+            }
         } catch (err: any) {
-            alert(`Failed to ${approved ? 'approve' : 'reject'} job: ${err.message}`)
+            alert(`Failed to submit rating: ${err.message}`)
         }
     }
+
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -130,7 +168,6 @@ export default function JobDetailPage() {
     const isPending = job.status === 'pending'
     const isAccepted = job.status === 'accepted'
     const isCompleted = job.status === 'completed'
-    const isPendingReview = job.status === 'pending_review'
     const isPoster = currentAgentId && job.poster_id === currentAgentId
 
 
@@ -155,8 +192,7 @@ export default function JobDetailPage() {
                             isPending ? "bg-primary/10 text-primary border-primary/20" :
                                 isAccepted ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
                                     isCompleted ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                        isPendingReview ? "bg-orange-500/10 text-orange-500 border-orange-500/20" :
-                                            "bg-muted text-muted-foreground"
+                                        "bg-muted text-muted-foreground"
                         )}>
                             {job.status}
                         </Badge>
@@ -168,8 +204,8 @@ export default function JobDetailPage() {
                     {/* Main Content Area */}
                     <div className="lg:col-span-2 space-y-8">
                         <div className="space-y-4">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-foreground leading-tight">
-                                {job.title || job.description}
+                            <h1 className="text-4xl font-extrabold tracking-tight text-foreground leading-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
+                                {job.title || "Autonomous Work Proposal"}
                             </h1>
                             <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground">
                                 <div className="flex items-center gap-1.5 bg-muted/30 px-3 py-1.5 rounded-lg border border-border/20">
@@ -187,12 +223,37 @@ export default function JobDetailPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Job Description</Label>
-                            <p className="text-xl text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {job.description}
-                            </p>
+                        <div className="space-y-6 bg-card/20 p-8 rounded-3xl border border-border/50 relative overflow-hidden group hover:border-primary/20 transition-all duration-500">
+                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <RiInformationLine className="h-32 w-32 -mr-16 -mt-16" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">Project Brief & Objectives</Label>
+                                <DescriptionFormatter text={job.description} />
+                            </div>
                         </div>
+
+                        {/* COMPLETED RESULT SECTION */}
+                        {isCompleted && (job as any).submitted_result && (
+                            <Card className="bg-green-500/5 border-green-500/20">
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2 text-green-500">
+                                        <RiCheckboxCircleLine className="h-5 w-5" />
+                                        Autonomous Submission
+                                    </CardTitle>
+                                    <CardDescription>
+                                        The agent has securely submitted the following result on-chain.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-foreground/90 font-mono text-sm whitespace-pre-wrap rounded-2xl bg-black/40 p-6 border border-green-500/20 shadow-inner overflow-x-auto">
+                                        {typeof (job as any).submitted_result === 'string'
+                                            ? (job as any).submitted_result
+                                            : JSON.stringify((job as any).submitted_result, null, 2)}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         <Card className="bg-card/40 backdrop-blur-sm border-border/50">
                             <CardHeader>
@@ -210,8 +271,8 @@ export default function JobDetailPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Detailed Input / Instructions</Label>
-                                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap rounded-xl bg-muted/20 p-4 border border-border/10">
+                                    <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">Detailed Input / Instructions</Label>
+                                    <div className="text-foreground/80 leading-relaxed font-mono text-sm whitespace-pre-wrap rounded-2xl bg-black/40 p-6 border border-border/20 shadow-inner">
                                         {typeof job.requirements === 'string' ? job.requirements : JSON.stringify(job.requirements, null, 2)}
                                     </div>
                                 </div>
@@ -226,7 +287,7 @@ export default function JobDetailPage() {
                                                 : "bg-black/40 border-border/20 text-secondary"
                                         )}>
                                             {(!job.expected_output_hash || job.expected_output_hash === '0x')
-                                                ? "Optimistic (Any Submission)"
+                                                ? "Optimistic (Pay First, Rate Later)"
                                                 : job.expected_output_hash}
                                         </div>
                                     </div>
@@ -257,7 +318,7 @@ export default function JobDetailPage() {
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" asChild>
-                                            <a href={`https://testnet.monadexplorer.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                            <a href={`https://monadvision.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                 <RiExternalLinkLine className="h-4 w-4" />
                                             </a>
                                         </Button>
@@ -274,7 +335,25 @@ export default function JobDetailPage() {
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="icon" asChild>
-                                                <a href={`https://testnet.monadexplorer.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                <a href={`https://monadvision.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                    <RiExternalLinkLine className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {(job as any).payment_tx_hash && (
+                                        <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500">
+                                                    <RiMoneyDollarCircleLine className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-foreground">Payment Settlement</p>
+                                                    <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).payment_tx_hash)}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                     <RiExternalLinkLine className="h-4 w-4" />
                                                 </a>
                                             </Button>
@@ -346,35 +425,38 @@ export default function JobDetailPage() {
                                             </p>
                                         </div>
                                     ) : isCompleted ? (
-                                        <div className="text-center space-y-3 py-4">
+                                        <div className="text-center space-y-4 py-4">
                                             <div className="h-12 w-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto">
                                                 <RiCheckboxCircleLine className="h-6 w-6" />
                                             </div>
-                                            <p className="text-sm font-bold text-green-500 uppercase tracking-widest">Verified & Paid</p>
-                                            <p className="text-xs text-muted-foreground px-4 leading-relaxed">This contract has been settled. Funds were distributed to the executor.</p>
-                                        </div>
-                                    ) : isPendingReview ? (
-                                        <div className="text-center space-y-4 py-4">
-                                            <div className="h-12 w-12 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-500 mx-auto">
-                                                <RiHourglassLine className="h-6 w-6 animate-pulse" />
-                                            </div>
-                                            <p className="text-sm font-bold text-orange-500 uppercase tracking-widest">Pending Review</p>
+                                            <p className="text-sm font-bold text-green-500 uppercase tracking-widest">
+                                                {(job as any).payment_tx_hash ? "Verified & Paid" : "Settlement Initiated"}
+                                            </p>
                                             <p className="text-xs text-muted-foreground px-4 leading-relaxed">
-                                                Executor has submitted work. Waiting for manual approval from poster.
+                                                {(job as any).payment_tx_hash
+                                                    ? "Funds were distributed to the executor."
+                                                    : "Settlement transaction is confirming on-chain..."}
                                             </p>
 
-                                            {/* We need to know if current user is poster to show buttons */}
-                                            {/* For now, I'll allow clicking and let API fail if not poster, or just show them if apiKey is set? */}
-                                            {/* Use a simple improvement: Fetch `me` to check. I'll add that logic in a separate tool call to `JobDetail`. */}
-                                            {/* For this chunk, I will render buttons but conditional on a new state `isPoster` which I will add next. */}
-                                            {isPoster && (
-                                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                                    <Button variant="outline" className="border-red-500/20 hover:bg-red-500/10 text-red-500" onClick={() => handleValidateJob(false)}>
-                                                        <RiCloseLine className="mr-2 h-4 w-4" /> Reject
-                                                    </Button>
-                                                    <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleValidateJob(true)}>
-                                                        <RiCheckLine className="mr-2 h-4 w-4" /> Approve
-                                                    </Button>
+                                            {(job as any).payment_tx_hash && (
+                                                <Button variant="outline" size="sm" className="h-7 text-xs border-green-500/20 text-green-600 bg-green-500/5" asChild>
+                                                    <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                        View Proof <RiExternalLinkLine className="ml-1 h-3 w-3" />
+                                                    </a>
+                                                </Button>
+                                            )}
+
+                                            {isPoster && !rated && (
+                                                <div className="pt-4 border-t border-border/20">
+                                                    <p className="text-[10px] font-bold text-muted-foreground mb-2">WAS THIS WORK SATISFACTORY?</p>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-500/10 border-red-500/20" onClick={() => handleRateJob('negative')}>
+                                                            <RiCloseLine className="mr-1 h-3 w-3" /> Report
+                                                        </Button>
+                                                        <Button variant="outline" size="sm" className="text-green-500 hover:bg-green-500/10 border-green-500/20" onClick={() => handleRateJob('positive')}>
+                                                            <RiCheckLine className="mr-1 h-3 w-3" /> Satisfied
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

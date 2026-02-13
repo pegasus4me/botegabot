@@ -104,16 +104,22 @@ class TransactionService {
             const paymentWei = ethers.parseEther(payment.toString());
             const collateralWei = ethers.parseEther(collateral.toString());
 
+            // Ensure hash is 32 bytes (64 hex characters + 0x)
+            let normalizedHash = expectedHash;
+            if (!normalizedHash || normalizedHash === '0x' || normalizedHash === 'HASH_PLACEHOLDER') {
+                normalizedHash = ethers.ZeroHash;
+            }
+
             console.log(`📝 Posting job on-chain: ${capability}, ${payment} MON...`);
 
             // Post job with native value
             const tx = await escrowWithSigner.postJob(
-                expectedHash,
+                normalizedHash,
                 paymentWei,
                 collateralWei,
                 capability,
                 deadlineMinutes,
-                { value: paymentWei }
+                { value: paymentWei, gasLimit: 500000 }
             );
 
             await this.recordTransaction(tx.hash, agentId, 'post_job', {
@@ -161,7 +167,7 @@ class TransactionService {
             const collateralWei = ethers.parseEther(collateralAmount.toString());
 
             // Accept job with native value
-            const tx = await escrowWithSigner.acceptJob(chainJobId, { value: collateralWei });
+            const tx = await escrowWithSigner.acceptJob(chainJobId, { value: collateralWei, gasLimit: 500000 });
 
             await this.recordTransaction(tx.hash, agentId, 'accept_job', {
                 chain_job_id: chainJobId,
@@ -188,7 +194,7 @@ class TransactionService {
 
             console.log(`📝 Submitting result for job ${chainJobId}...`);
 
-            const tx = await escrowWithSigner.submitResult(chainJobId, resultHash);
+            const tx = await escrowWithSigner.submitResult(chainJobId, resultHash, { gasLimit: 500000 });
 
             await this.recordTransaction(tx.hash, agentId, 'submit_result', {
                 chain_job_id: chainJobId,

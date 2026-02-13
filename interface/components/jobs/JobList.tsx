@@ -9,7 +9,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Job, JobStatus } from "@/types";
+import { Job, JobStatus } from "../../types";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -24,15 +24,17 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
 
 interface JobListProps {
     jobs: Job[];
     showAction?: boolean;
     onAccept?: (jobId: string, collateral: string) => void;
     onSubmit?: (jobId: string, result: any, hash: string) => void;
+    onRate?: (jobId: string, rating: 'positive' | 'negative') => void;
 }
 
-export default function JobList({ jobs, showAction = false, onAccept, onSubmit }: JobListProps) {
+export default function JobList({ jobs, showAction = false, onAccept, onSubmit, onRate }: JobListProps) {
     if (jobs.length === 0) {
         return (
             <Card className="bg-muted/50 border-dashed">
@@ -52,6 +54,7 @@ export default function JobList({ jobs, showAction = false, onAccept, onSubmit }
                     showAction={showAction}
                     onAccept={onAccept}
                     onSubmit={onSubmit}
+                    onRate={onRate}
                 />
             ))}
         </div>
@@ -62,23 +65,28 @@ function JobCard({
     job,
     showAction,
     onAccept,
-    onSubmit
+    onSubmit,
+    onRate
 }: {
     job: Job;
     showAction?: boolean;
     onAccept?: (id: string, col: string) => void;
     onSubmit?: (id: string, result: any, hash: string) => void;
+    onRate?: (id: string, rating: 'positive' | 'negative') => void;
 }) {
     const [isSubmitOpen, setIsSubmitOpen] = useState(false);
     const [resultJson, setResultJson] = useState("");
     const [resultHash, setResultHash] = useState("");
+    const [rated, setRated] = useState(false);
 
     const getStatusBadge = (status: JobStatus) => {
         switch (status) {
+            case 'accepted': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
             case 'active': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
+            case 'pending_review': return <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-200">Needs Rating</Badge>;
             case 'completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">Completed</Badge>;
             case 'failed': return <Badge variant="destructive">Failed</Badge>;
-            default: return <Badge variant="secondary">Pending</Badge>;
+            default: return <Badge variant="secondary">Open</Badge>;
         }
     };
 
@@ -93,6 +101,13 @@ function JobCard({
             }
         }
     };
+
+    const handleRate = (rating: 'positive' | 'negative') => {
+        if (onRate) {
+            onRate(job.job_id, rating);
+            setRated(true);
+        }
+    }
 
     return (
         <Card className="group hover:border-primary/50 transition-all duration-200 overflow-hidden">
@@ -117,7 +132,7 @@ function JobCard({
                 </CardHeader>
 
                 <CardContent className="pb-3">
-                    <div className="flex items-center space-x-6 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                         <div className="flex items-center text-green-600 font-medium">
                             <span className="mr-2">💰</span>
                             {formatCurrency(job.payment_amount)}
@@ -130,9 +145,68 @@ function JobCard({
                             <span className="mr-2">⏰</span>
                             {job.deadline_minutes} mins
                         </div>
+                        {(job.escrow_tx_hash || job.collateral_tx_hash || job.payment_tx_hash) && (
+                            <div className="flex items-center gap-2 ml-auto">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Proof of Work:</span>
+                                <div className="flex gap-1">
+                                    {job.escrow_tx_hash && (
+                                        <a
+                                            href={`https://monad.socialscan.io/tx/${job.escrow_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors tooltip"
+                                            title="View Escrow"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            📜
+                                        </a>
+                                    )}
+                                    {job.collateral_tx_hash && (
+                                        <a
+                                            href={`https://monad.socialscan.io/tx/${job.collateral_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 transition-colors"
+                                            title="View Acceptance"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            🤝
+                                        </a>
+                                    )}
+                                    {job.payment_tx_hash && (
+                                        <a
+                                            href={`https://monad.socialscan.io/tx/${job.payment_tx_hash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-5 h-5 flex items-center justify-center rounded bg-green-500/10 hover:bg-green-500/20 text-green-600 transition-colors"
+                                            title="View Payout"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            ✅
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Link>
+
+            {job.submitted_result && (
+                <CardContent className="pt-0 pb-3">
+                    <div className="bg-muted/30 rounded-lg p-3 border border-muted-foreground/10">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Agent Submission
+                        </div>
+                        <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
+                            {typeof job.submitted_result === 'string'
+                                ? job.submitted_result
+                                : JSON.stringify(job.submitted_result, null, 2)}
+                        </pre>
+                    </div>
+                </CardContent>
+            )}
 
             {/* Accept Job Action */}
             {showAction && job.status === 'pending' && onAccept && (
@@ -188,6 +262,35 @@ function JobCard({
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                </CardFooter>
+            )}
+
+            {/* Rate Job Action (for completed jobs, if enabled) */}
+            {job.status === 'completed' && onRate && !rated && (
+                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2 justify-end items-center">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground mr-2">Rate Agent Work:</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-500 hover:bg-red-500/10 border-red-500/20 h-7 text-xs"
+                        onClick={(e) => { e.stopPropagation(); handleRate('negative'); }}
+                    >
+                        Report
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-green-500 hover:bg-green-500/10 border-green-500/20 h-7 text-xs"
+                        onClick={(e) => { e.stopPropagation(); handleRate('positive'); }}
+                    >
+                        Satisfied
+                    </Button>
+                </CardFooter>
+            )}
+            {/* Feedback provided state */}
+            {job.status === 'completed' && onRate && rated && (
+                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2 justify-end">
+                    <span className="text-xs text-muted-foreground italic">Feedback Submitted</span>
                 </CardFooter>
             )}
         </Card>

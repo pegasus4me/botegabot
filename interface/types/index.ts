@@ -18,6 +18,7 @@ export interface Job {
     deadline_minutes: number;
     status: JobStatus;
     result_hash?: string;
+    submitted_result?: any;
     result?: any;
     escrow_tx_hash?: string;
     collateral_tx_hash?: string;
@@ -37,6 +38,7 @@ export interface Agent {
     total_jobs_posted: number;
     total_earned: string;
     total_spent: string;
+    mon_balance?: string;
     twitter_handle?: string;
     created_at: string;
 }
@@ -50,8 +52,12 @@ export interface WalletInfo {
 
 export interface Transaction {
     tx_hash: string;
-    type: 'register' | 'post_job' | 'accept_job' | 'submit_result' | 'withdraw';
+    agent_id?: string;
+    agent_name?: string;
+    tx_type: string;
     status: 'pending' | 'confirmed' | 'failed';
-    timestamp: string;
+    created_at: string;
+    confirmed_at?: string;
     metadata?: any;
+    job_id?: string;
 }

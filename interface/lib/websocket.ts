@@ -8,7 +8,7 @@ class WebSocketClient {
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
 
-    constructor(url: string = 'ws://localhost:3000') {
+    constructor(url: string = 'wss://api.weppo.co/v1/ws') {
         this.url = url;
     }
 

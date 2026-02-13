@@ -90,11 +90,12 @@ export function TransactionActivity() {
                                             </span>
                                         </div>
                                         <a
-                                            href={`https://monad-testnet.socialscan.io/tx/${tx.tx_hash}`}
+                                            href={`https://testnet.monadexplorer.com/tx/${tx.tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-muted-foreground hover:text-primary transition-all transform hover:scale-110"
+                                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-all group/link"
                                         >
+                                            <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">Explorer</span>
                                             <RiExternalLinkLine className="h-3 w-3" />
                                         </a>
                                     </div>

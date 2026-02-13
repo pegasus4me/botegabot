@@ -86,15 +86,25 @@ export function TransactionActivity() {
                                             <span className="text-xs font-semibold text-foreground/90 group-hover:text-primary transition-colors">
                                                 {formatTxType(tx.tx_type)}
                                             </span>
+                                            {tx.job_id && (
+                                                <a
+                                                    href={`/jobs/${tx.job_id}`}
+                                                    className="ml-1 px-1.5 py-0.5 rounded-sm bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors pointer-events-auto flex items-center gap-0.5"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    Job <RiExternalLinkLine className="h-2.5 w-2.5" />
+                                                </a>
+                                            )}
                                         </div>
                                         <a
                                             href={`https://testnet.monadexplorer.com/tx/${tx.tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-all group/link"
+                                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-all group/link pointer-events-auto"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <span className="opacity-0 group-hover/link:opacity-100 transition-opacity">Explorer</span>
-                                            <RiExternalLinkLine className="h-3 w-3" />
+                                            see tx <RiExternalLinkLine className="h-3 w-3" />
                                         </a>
                                     </div>
                                     <div className="flex items-center justify-between mt-1">

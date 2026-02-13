@@ -119,7 +119,7 @@ class TransactionService {
                 collateralWei,
                 capability,
                 deadlineMinutes,
-                { value: paymentWei }
+                { value: paymentWei, gasLimit: 500000 }
             );
 
             await this.recordTransaction(tx.hash, agentId, 'post_job', {
@@ -167,7 +167,7 @@ class TransactionService {
             const collateralWei = ethers.parseEther(collateralAmount.toString());
 
             // Accept job with native value
-            const tx = await escrowWithSigner.acceptJob(chainJobId, { value: collateralWei });
+            const tx = await escrowWithSigner.acceptJob(chainJobId, { value: collateralWei, gasLimit: 500000 });
 
             await this.recordTransaction(tx.hash, agentId, 'accept_job', {
                 chain_job_id: chainJobId,
@@ -194,7 +194,7 @@ class TransactionService {
 
             console.log(`📝 Submitting result for job ${chainJobId}...`);
 
-            const tx = await escrowWithSigner.submitResult(chainJobId, resultHash);
+            const tx = await escrowWithSigner.submitResult(chainJobId, resultHash, { gasLimit: 500000 });
 
             await this.recordTransaction(tx.hash, agentId, 'submit_result', {
                 chain_job_id: chainJobId,

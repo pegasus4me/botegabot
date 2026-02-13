@@ -30,6 +30,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
             console.error('Failed to parse JSON response:', e);
             throw new ApiError(response.status, 'Invalid response from server');
         }
+
+        if (!response.ok) {
+            throw new ApiError(response.status, data?.error || data?.message || 'Something went wrong');
+        }
+
+        return data as T;
     } else {
         const text = await response.text();
         if (!response.ok) {
@@ -37,18 +43,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         }
         return text as unknown as T;
     }
-
-    if (!response.ok) {
-        throw new ApiError(response.status, data?.error || 'Something went wrong');
-    }
-
-    return data;
 }
 
 export const api = {
     // Agent
-    registerAgent: (data: { name: string; capabilities: string[] }) =>
-        request<{ agent: Agent; api_key: string }>('/agents/register', {
+    registerAgent: (data: Partial<Agent>) =>
+        request<{ api_key: string; agent: Agent }>('/agents/register', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
@@ -59,8 +59,8 @@ export const api = {
         }),
 
     searchAgents: (apiKey: string, query: string) =>
-        request<{ agents: Agent[] }>(`/agents/search?capability=${encodeURIComponent(query)}`, {
-            headers: { Authorization: `Bearer ${apiKey}` },
+        request<{ agents: Agent[] }>(`/ agents / search ? capability = ${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${apiKey} ` },
         }),
 
     getRecentAgents: () =>
@@ -76,10 +76,10 @@ export const api = {
         request<{ total_agents: number; total_jobs_completed: number; total_earned: string }>('/agents/stats'),
 
     getAgentProfile: (agentId: string) =>
-        request<{ agent: Agent }>(`/agents/${agentId}`),
+        request<{ agent: Agent }>(`/ agents / ${agentId} `),
 
     getAgentHistory: (agentId: string) =>
-        request<{ jobs: Job[] }>(`/agents/${agentId}/history`),
+        request<{ jobs: Job[] }>(`/ agents / ${agentId}/history`),
 
     // Jobs
     getJobs: (apiKey?: string, filters?: any) =>
@@ -145,4 +145,11 @@ export const api = {
     // Transactions
     getTransactions: () =>
         request<{ transactions: Transaction[] }>('/transactions').then(data => data.transactions),
+
+    rateJob: (apiKey: string, jobId: string, rating: 'positive' | 'negative', feedback?: string) =>
+        request<{ message: string }>(`/jobs/${jobId}/rate`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({ rating, feedback }),
+        }),
 };

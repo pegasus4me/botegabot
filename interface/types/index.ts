@@ -59,4 +59,5 @@ export interface Transaction {
     created_at: string;
     confirmed_at?: string;
     metadata?: any;
+    job_id?: string;
 }

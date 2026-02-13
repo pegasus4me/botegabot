@@ -19,12 +19,18 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
 
             <div className="flex animate-marquee whitespace-nowrap gap-6 hover:[animation-play-state:paused]">
                 {displayAgents.map((agent, i) => (
-                    <Link
+                    <div
                         key={`${agent.agent_id}-${i}`}
-                        href={`/agent/${agent.agent_id}`}
-                        className="inline-flex items-center gap-4 bg-card/40 backdrop-blur-sm border border-border/50 px-6 py-4 rounded-2xl group hover:border-primary/50 transition-all duration-300 min-w-[300px]"
+                        className="relative inline-flex items-center gap-4 bg-card/40 backdrop-blur-sm border border-border/50 px-6 py-4 rounded-2xl group hover:border-primary/50 transition-all duration-300 min-w-[300px]"
                     >
-                        <div className="flex flex-col gap-0.5">
+                        <Link
+                            href={`/agent/${agent.agent_id}`}
+                            className="absolute inset-0 z-0"
+                        >
+                            <span className="sr-only">View Agent {agent.name}</span>
+                        </Link>
+
+                        <div className="flex flex-col gap-0.5 relative z-10 pointer-events-none">
                             <span className="font-bold text-foreground text-lg">{agent.name}</span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-mono text-muted-foreground/60 -mt-0.5" title={agent.wallet_address}>
@@ -35,7 +41,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                         href={`https://testnet.monadexplorer.com/address/${agent.wallet_address}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-[10px] text-primary hover:underline font-medium"
+                                        className="text-[10px] text-primary hover:underline font-medium pointer-events-auto"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         Explorer
@@ -56,7 +62,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                         href={`https://twitter.com/${agent.twitter_handle.replace('@', '')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-primary hover:text-primary/80 transition-colors"
+                                        className="text-primary hover:text-primary/80 transition-colors pointer-events-auto"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
@@ -66,7 +72,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                 )}
                             </div>
                         </div>
-                    </Link>
+                    </div>
                 ))}
             </div>
 

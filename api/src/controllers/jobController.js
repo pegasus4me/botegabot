@@ -17,7 +17,8 @@ async function postJob(req, res) {
             payment_amount,
             collateral_required,
             deadline_minutes,
-            manual_verification = false
+            deadline_minutes,
+            manual_verification = false // AUTONOMOUS MODE: Forced false
         } = req.body;
 
         // Validation
@@ -79,7 +80,7 @@ async function postJob(req, res) {
                 deadline_minutes,
                 deadline,
                 'pending',
-                manual_verification,
+                false, // manual_verification forced false for autonomy
                 txResult.chainJobId,
                 txResult.tx.hash
             ]
@@ -245,6 +246,9 @@ async function acceptJob(req, res) {
 /**
  * Submit job result
  */
+/**
+ * Submit job result
+ */
 async function submitResult(req, res) {
     try {
         const { job_id } = req.params;
@@ -257,19 +261,6 @@ async function submitResult(req, res) {
 
         if (!isValidHash(result_hash)) {
             return res.status(400).json({ error: 'Invalid hash format' });
-        }
-
-        // Verify hash matches result
-        const calculatedHash = generateHash(result);
-        if (calculatedHash !== result_hash) {
-            // Get job to check manual_verification status (optimization: we would need to check this anyway)
-            const jobResult = await db.query('SELECT manual_verification FROM jobs WHERE job_id = $1', [job_id]);
-            const isManual = jobResult.rows.length > 0 && jobResult.rows[0].manual_verification;
-
-            if (!isManual) {
-                return res.status(400).json({ error: 'Result hash does not match calculated hash' });
-            }
-            console.warn(`⚠️ Hash mismatch for manual_verification job ${job_id}. Allowing submission for review.`);
         }
 
         // Get job
@@ -302,43 +293,11 @@ async function submitResult(req, res) {
         const isOptimistic = !job.expected_output_hash || job.expected_output_hash === '0x';
         const hashMatch = isOptimistic || result_hash === job.expected_output_hash;
 
-        // Manual Verification Logic
-        if (job.manual_verification) {
-            await db.query(
-                `UPDATE jobs SET 
-            submitted_hash = $1, 
-            submitted_result = $2,
-            status = 'pending_review', 
-            updated_at = NOW()
-           WHERE job_id = $3`,
-                [result_hash, JSON.stringify(result), job_id]
-            );
-
-            // Notify poster
-            const wsService = require('../services/websocketService');
-            // Assuming we have a notifyJobsubmitted or similar, otherwise just reuse existing or create new?
-            // Existing notifications seem to be: broadcastJobPosted, notifyJobAccepted, notifyPaymentReceived, notifyJobCompleted
-            // We should ideally add notifyJobSubmittedForReview. For now let's just log it or maybe assume poster checks dashboard.
-            // But let's verify if there is a method we can use or if we should add it. 
-            // I will assume notifyJobSubmittedForReview doesn't exist yet, so I might need to add it later.
-            // For now, I'll proceed without a specific WS notification or just skip it.
-            // Actually, let's look at `wsService` usage. `wsService.notifyJobAccepted(job, req.agentId)`
-
-            res.json({
-                job: {
-                    job_id: job.job_id,
-                    status: 'pending_review',
-                    verification_status: 'pending',
-                    completed_at: new Date()
-                },
-                message: 'Result submitted! Waiting for manual verification by poster.'
-            });
-            return;
-        }
-
+        // AUTONOMOUS SETTLEMENT: No manual verification.
+        // If hash matches (or is optimistic), job is completed immediately.
         const newStatus = hashMatch ? 'completed' : 'failed';
 
-        // Update job
+        // Update job locally first
         await db.query(
             `UPDATE jobs SET 
         submitted_hash = $1, 
@@ -350,7 +309,7 @@ async function submitResult(req, res) {
             [result_hash, JSON.stringify(result), newStatus, job_id]
         );
 
-        // Update agent stats
+        // Update agent stats immediately (optimistic local update)
         if (hashMatch) {
             // Update executor
             await db.query(
@@ -377,92 +336,40 @@ async function submitResult(req, res) {
             );
         }
 
-        // Submit result on-chain (async)
+        // Trigger On-chain Settlement (Async)
         if (job.chain_job_id) {
-            transactionService.submitResultOnChain(req.agentId, job.chain_job_id, result_hash)
-                .then(async (txResult) => {
-                    const finalStatus = txResult.verified ? 'completed' : 'failed';
+            // We verify or slash based on the local check result
+            // If hashMatch is true, we submit the result to get paid.
+            // If hashMatch is false, we technically shouldn't submit to get paid, but for now let's attempt settlement if logic dictates.
+            // Actually, if hashMatch is true, we call submitResultOnChain.
 
-                    // Update job with on-chain result
-                    await db.query(
-                        `UPDATE jobs SET 
-                            submitted_hash = $1,
-                            status = $2,
-                            payment_tx_hash = $3,
-                            completed_at = NOW(),
-                            updated_at = NOW()
-                         WHERE job_id = $4`,
-                        [result_hash, finalStatus, txResult.tx.hash, job_id]
-                    );
-
-                    // Update agent stats based on on-chain result
-                    if (txResult.verified) {
-                        await db.query(
-                            `UPDATE agents SET
-                                total_jobs_completed = total_jobs_completed + 1,
-                                total_earned = total_earned + $1,
-                                reputation_score = reputation_score + 5
-                             WHERE agent_id = $2`,
-                            [job.payment_amount, req.agentId]
-                        );
-
-                        await db.query(
-                            `UPDATE agents SET total_spent = total_spent + $1 WHERE agent_id = $2`,
-                            [job.payment_amount, job.poster_id]
-                        );
-                    } else {
-                        await db.query(
-                            'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
-                            [req.agentId]
-                        );
-                    }
-
-                    console.log(`✅ Job ${job_id} ${txResult.verified ? 'completed' : 'failed'} on-chain: ${txResult.tx.hash}`);
-
-                    // Notify via WebSocket
-                    const wsService = require('../services/websocketService');
-                    wsService.notifyPaymentReceived(job, job.payment_amount, txResult.verified);
-                    wsService.notifyJobCompleted(job, txResult.verified);
-                })
-                .catch(err => console.error(`❌ Failed to submit result on-chain:`, err));
-        } else {
-            // Fallback: off-chain verification (for jobs created before wallet integration)
-            const hashMatch = result_hash === job.expected_output_hash;
-            const newStatus = hashMatch ? 'completed' : 'failed';
-
-            await db.query(
-                `UPDATE jobs SET 
-                    submitted_hash = $1, 
-                    status = $2, 
-                    completed_at = NOW(),
-                    updated_at = NOW()
-                 WHERE job_id = $3`,
-                [result_hash, newStatus, job_id]
-            );
-
-            // Update agent stats
             if (hashMatch) {
-                await db.query(
-                    `UPDATE agents SET
-                        total_jobs_completed = total_jobs_completed + 1,
-                        total_earned = total_earned + $1,
-                        reputation_score = reputation_score + 5
-                     WHERE agent_id = $2`,
-                    [job.payment_amount, req.agentId]
-                );
+                console.log(`🤖 Triggering autonomous on-chain settlement for job ${job_id}...`);
+                transactionService.submitResultOnChain(req.agentId, job.chain_job_id, result_hash)
+                    .then(async (txResult) => {
+                        const finalStatus = txResult.verified ? 'completed' : 'failed';
 
-                await db.query(
-                    `UPDATE agents SET total_spent = total_spent + $1 WHERE agent_id = $2`,
-                    [job.payment_amount, job.poster_id]
-                );
-            } else {
-                await db.query(
-                    'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
-                    [req.agentId]
-                );
+                        // Update job with on-chain result
+                        await db.query(
+                            `UPDATE jobs SET 
+                            status = $1,
+                            payment_tx_hash = $2,
+                            updated_at = NOW()
+                         WHERE job_id = $3`,
+                            [finalStatus, txResult.tx.hash, job_id]
+                        );
+
+                        console.log(`✅ Job ${job_id} ${txResult.verified ? 'settled' : 'failed'} on-chain: ${txResult.tx.hash}`);
+
+                        // Notify via WebSocket
+                        const wsService = require('../services/websocketService');
+                        wsService.notifyPaymentReceived(job, job.payment_amount, txResult.verified);
+                        wsService.notifyJobCompleted(job, txResult.verified);
+                    })
+                    .catch(err => console.error(`❌ Failed to submit result on-chain:`, err));
             }
-
-            // Notify via WebSocket
+        } else {
+            // Notify via WebSocket for off-chain jobs
             const wsService = require('../services/websocketService');
             wsService.notifyPaymentReceived(job, job.payment_amount, hashMatch);
             wsService.notifyJobCompleted(job, hashMatch);
@@ -477,13 +384,64 @@ async function submitResult(req, res) {
                 completed_at: new Date()
             },
             message: hashMatch
-                ? `✅ Hash verified! ${job.payment_amount} MON will be paid to your wallet`
-                : '❌ Hash mismatch! Collateral will be slashed'
+                ? `✅ Job completed! ${job.payment_amount} MON settlement triggered.`
+                : '❌ Hash mismatch! Job failed.'
         });
 
     } catch (error) {
         console.error('Submit result error:', error);
         res.status(500).json({ error: 'Failed to submit result' });
+    }
+}
+
+/**
+ * Rate a job (Post-completion accountability)
+ */
+async function rateJob(req, res) {
+    try {
+        const { job_id } = req.params;
+        const { rating, feedback } = req.body; // rating: 'positive' | 'negative'
+
+        // Get job
+        const jobResult = await db.query(
+            'SELECT * FROM jobs WHERE job_id = $1',
+            [job_id]
+        );
+
+        if (jobResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
+
+        const job = jobResult.rows[0];
+
+        // Validation
+        if (job.poster_id !== req.agentId) {
+            return res.status(403).json({ error: 'Only the poster can rate this job' });
+        }
+
+        if (job.status !== 'completed') {
+            return res.status(400).json({ error: 'Can only rate completed jobs' });
+        }
+
+        if (rating === 'negative') {
+            console.log(`📉 Negative rating for job ${job_id}. Slashing executor...`);
+
+            // Slash executor reputation
+            // -50 penalty for bad work after payment
+            await db.query(
+                `UPDATE agents SET reputation_score = reputation_score - 50 WHERE agent_id = $1`,
+                [job.executor_id]
+            );
+
+            // Record the dispute/rating (could add a column later, for now just logging/updating rep)
+            // Ideally we'd have a 'rating' column on jobs table.
+        }
+
+        res.json({ message: 'Rating submitted. Agent reputation updated.' });
+
+    } catch (error) {
+        console.error('Rate job error:', error);
+        res.status(500).json({ error: 'Failed to rate job' });
     }
 }
 
@@ -678,5 +636,6 @@ module.exports = {
     submitResult,
     getJob,
     getRecentJobs,
-    validateJob
+    validateJob,
+    rateJob
 };

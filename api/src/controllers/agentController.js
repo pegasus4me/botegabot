@@ -22,68 +22,114 @@ async function registerAgent(req, res) {
             return res.status(400).json({ error: 'Capabilities must be a non-empty array' });
         }
 
-        // Generate IDs
-        const agentId = generateAgentId();
-        const apiKey = generateApiKey();
+        // Check if agent already exists
+        const existing = await db.query(
+            'SELECT agent_id, api_key, wallet_address, is_active FROM agents WHERE name = $1',
+            [name]
+        );
 
-        // 1. Create custodial wallet for agent
-        const wallet = walletService.generateWallet();
-        console.log(`🤖 New agent ${name} generated address: ${wallet.address}`);
+        let agentId, apiKey, walletAddress, privateKey, mnemonic;
+        let isNew = false;
+
+        if (existing.rows.length > 0) {
+            const agent = existing.rows[0];
+            if (agent.is_active) {
+                return res.status(400).json({ error: 'Agent with this name already registered' });
+            }
+
+            // Reuse existing
+            agentId = agent.agent_id;
+            apiKey = agent.api_key;
+            walletAddress = agent.wallet_address;
+
+            // Get private key from wallet service
+            try {
+                const walletInfo = await walletService.exportWallet(agentId);
+                privateKey = walletInfo.private_key;
+                mnemonic = walletInfo.mnemonic;
+            } catch (err) {
+                console.error('Failed to retrieve existing wallet:', err);
+                return res.status(500).json({ error: 'Failed to retrieve wallet for existing inactive agent' });
+            }
+        } else {
+            // Generate New
+            agentId = generateAgentId();
+            apiKey = generateApiKey();
+            const wallet = walletService.generateWallet();
+            walletAddress = wallet.address;
+            privateKey = wallet.privateKey;
+            mnemonic = wallet.mnemonic;
+            isNew = true;
+
+            // Save to DB in pending state
+            await db.query(
+                `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities, twitter_handle, is_active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
+                [agentId, apiKey, walletAddress, name, description || '', capabilities, twitter_handle || null]
+            );
+
+            await walletService.saveAgentWallet(agentId, { address: walletAddress, privateKey, mnemonic });
+
+            await db.query(
+                'INSERT INTO api_keys (api_key, agent_id) VALUES ($1, $2)',
+                [apiKey, agentId]
+            );
+            if (isNew) {
+                // 2. Automated Welcome Drip (0.005 MON for gas)
+                try {
+                    if (config.wallet.deployerPrivateKey) {
+                        console.log(`⛽ Sending Welcome Drip to ${walletAddress}...`);
+                        const funder = new ethers.Wallet(config.wallet.deployerPrivateKey, blockchainConfig.provider);
+                        const fundTx = await funder.sendTransaction({
+                            to: walletAddress,
+                            value: ethers.parseEther("0.1")
+                        });
+                        await fundTx.wait();
+                        console.log(`✅ Welcome Drip confirmed: ${fundTx.hash}`);
+                    }
+                } catch (fundError) {
+                    console.error('⚠️ Welcome Drip failed (non-blocking):', fundError.message);
+                    // We don't fail here, the user can still fund manually as a fallback
+                }
+            }
+        }
 
         // 3. Register agent on-chain (Atomic)
         try {
-            console.log(`📝 Registering agent ${agentId} on-chain...`);
-            const agentSigner = new ethers.Wallet(wallet.privateKey, blockchainConfig.provider);
+            console.log(`📝 Registering agent ${agentId} on-chain with wallet ${walletAddress}...`);
+            const agentSigner = new ethers.Wallet(privateKey, blockchainConfig.provider);
             const registryWithSigner = blockchainConfig.agentRegistry.connect(agentSigner);
 
-            // Note: Since faucet is removed, the user MUST have funded the wallet address before this call if they are calling from a script,
-            // but since our internal flow generates the wallet, we need them to fund it.
-            // HOWEVER, the user request says "the user have to top up is agent wallet before starting on botega".
-            // If the wallet is generated here, they can't top it up BEFORE registration unless they provide their own wallet.
-            // But currently the API generates it.
-            // I will keep the registration attempt, but it will likely fail without gas.
-            // A better flow would be: 1. Generate Wallet, 2. User funds, 3. User calls Register.
-            // For now, I'll just remove the auto-faucet as requested.
-
-            const tx = await registryWithSigner.registerAgent(capabilities);
+            const tx = await registryWithSigner.registerAgent(capabilities, { gasLimit: 500000 });
             await tx.wait();
             console.log(`✅ On-chain registration confirmed: ${tx.hash}`);
+
+            // 4. Update status to active
+            await db.query('UPDATE agents SET is_active = true WHERE agent_id = $1', [agentId]);
+
         } catch (regError) {
             console.error('❌ On-chain registration failed:', regError);
             return res.status(500).json({
                 error: 'Blockchain registration failed. Ensure your internal agent wallet has MON for gas.',
-                details: regError.message,
-                wallet_address: wallet.address
+                message: regError.message,
+                wallet_address: walletAddress,
+                hint: `Send MON to ${walletAddress} then try registering again with the same name. Your wallet will be preserved.`
             });
         }
 
-        // 4. Insert into database ONLY after on-chain success
-        await db.query(
-            `INSERT INTO agents (agent_id, api_key, wallet_address, name, description, capabilities, twitter_handle)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [agentId, apiKey, wallet.address, name, description || '', capabilities, twitter_handle || null]
-        );
-
-        await walletService.saveAgentWallet(agentId, wallet);
-
-        await db.query(
-            'INSERT INTO api_keys (api_key, agent_id) VALUES ($1, $2)',
-            [apiKey, agentId]
-        );
-
-        // Return response
+        // Return sync response
         res.status(201).json({
             agent: {
                 agent_id: agentId,
                 api_key: apiKey,
-                wallet_address: wallet.address,
-                mnemonic: wallet.mnemonic,
+                wallet_address: walletAddress,
+                mnemonic: mnemonic,
                 capabilities,
                 twitter_handle,
                 reputation_score: 0
             },
             important: '⚠️ SAVE YOUR API KEY AND MNEMONIC! They will not be shown again.',
-            note: 'Your wallet has been funded and registered on-chain. You are ready to start!'
+            note: 'Your agent is now live and registered on-chain!'
         });
 
     } catch (error) {
@@ -179,6 +225,7 @@ async function getRecentAgents(req, res) {
             a.reputation_score, a.total_jobs_completed, a.total_earned, a.twitter_handle, a.created_at 
              FROM agents a
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
+             WHERE a.is_active = true
              ORDER BY a.created_at DESC`
         );
 
@@ -279,7 +326,7 @@ async function getDailyActiveAgents(req, res) {
              FROM agents a
              LEFT JOIN api_keys ak ON a.agent_id = ak.agent_id
              LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
-        WHERE(
+        WHERE a.is_active = true AND (
             a.created_at >= NOW() - INTERVAL '24 hours' OR 
                 ak.last_used_at >= NOW() - INTERVAL '24 hours'
         )
@@ -331,7 +378,7 @@ async function getAgentPublicProfile(req, res) {
             a.total_earned, a.total_spent, a.is_active, a.created_at, a.twitter_handle
        FROM agents a
        LEFT JOIN agent_wallets w ON a.agent_id = w.agent_id
-       WHERE a.agent_id = $1`,
+       WHERE a.agent_id = $1 AND a.is_active = true`,
             [agentId]
         );
 

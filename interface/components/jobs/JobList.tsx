@@ -25,15 +25,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+
 interface JobListProps {
     jobs: Job[];
     showAction?: boolean;
     onAccept?: (jobId: string, collateral: string) => void;
     onSubmit?: (jobId: string, result: any, hash: string) => void;
-    onValidate?: (jobId: string, approved: boolean) => void;
+    onRate?: (jobId: string, rating: 'positive' | 'negative') => void;
 }
 
-export default function JobList({ jobs, showAction = false, onAccept, onSubmit, onValidate }: JobListProps) {
+export default function JobList({ jobs, showAction = false, onAccept, onSubmit, onRate }: JobListProps) {
     if (jobs.length === 0) {
         return (
             <Card className="bg-muted/50 border-dashed">
@@ -53,16 +54,11 @@ export default function JobList({ jobs, showAction = false, onAccept, onSubmit, 
                     showAction={showAction}
                     onAccept={onAccept}
                     onSubmit={onSubmit}
-                    onValidate={onValidate}
+                    onRate={onRate}
                 />
             ))}
         </div>
     );
-}
-
-// accept job function
-function acceptJobTrigger(apiKey: string, jobId: string) {
-    api.validateJob(apiKey, jobId, true);
 }
 
 function JobCard({
@@ -70,26 +66,27 @@ function JobCard({
     showAction,
     onAccept,
     onSubmit,
-    onValidate
+    onRate
 }: {
     job: Job;
     showAction?: boolean;
     onAccept?: (id: string, col: string) => void;
     onSubmit?: (id: string, result: any, hash: string) => void;
-    onValidate?: (id: string, approved: boolean) => void;
+    onRate?: (id: string, rating: 'positive' | 'negative') => void;
 }) {
     const [isSubmitOpen, setIsSubmitOpen] = useState(false);
     const [resultJson, setResultJson] = useState("");
     const [resultHash, setResultHash] = useState("");
+    const [rated, setRated] = useState(false);
 
     const getStatusBadge = (status: JobStatus) => {
         switch (status) {
-            case 'accepted': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">Accepted</Badge>;
+            case 'accepted': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
             case 'active': return <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-200">In Progress</Badge>;
-            case 'pending_review': return <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-200">Pending Review</Badge>;
+            case 'pending_review': return <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-200">Needs Rating</Badge>;
             case 'completed': return <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200">Completed</Badge>;
             case 'failed': return <Badge variant="destructive">Failed</Badge>;
-            default: return <Badge variant="secondary">Pending</Badge>;
+            default: return <Badge variant="secondary">Open</Badge>;
         }
     };
 
@@ -104,6 +101,13 @@ function JobCard({
             }
         }
     };
+
+    const handleRate = (rating: 'positive' | 'negative') => {
+        if (onRate) {
+            onRate(job.job_id, rating);
+            setRated(true);
+        }
+    }
 
     return (
         <Card className="group hover:border-primary/50 transition-all duration-200 overflow-hidden">
@@ -261,24 +265,32 @@ function JobCard({
                 </CardFooter>
             )}
 
-            {/* Validate Job Action (for posters) */}
-            {job.status === 'pending_review' && onValidate && (
-                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2">
+            {/* Rate Job Action (for completed jobs, if enabled) */}
+            {job.status === 'completed' && onRate && !rated && (
+                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2 justify-end items-center">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground mr-2">Rate Agent Work:</span>
                     <Button
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
-                        onClick={() => onValidate(job.job_id, false)}
+                        className="text-red-500 hover:bg-red-500/10 border-red-500/20 h-7 text-xs"
+                        onClick={(e) => { e.stopPropagation(); handleRate('negative'); }}
                     >
-                        Reject
+                        Report
                     </Button>
                     <Button
-                        variant="default"
+                        variant="outline"
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 ml-auto"
-                        onClick={() => onValidate(job.job_id, true)}
+                        className="text-green-500 hover:bg-green-500/10 border-green-500/20 h-7 text-xs"
+                        onClick={(e) => { e.stopPropagation(); handleRate('positive'); }}
                     >
-                        Approve & Pay
+                        Satisfied
                     </Button>
+                </CardFooter>
+            )}
+            {/* Feedback provided state */}
+            {job.status === 'completed' && onRate && rated && (
+                <CardFooter className="pt-3 border-t bg-muted/20 flex gap-2 justify-end">
+                    <span className="text-xs text-muted-foreground italic">Feedback Submitted</span>
                 </CardFooter>
             )}
         </Card>

@@ -80,13 +80,13 @@ export default function DashboardPage() {
         }
     };
 
-    const handleValidate = async (jobId: string, approved: boolean) => {
+    const handleRate = async (jobId: string, rating: 'positive' | 'negative') => {
         try {
-            await api.validateJob(apiKey, jobId, approved);
-            alert(approved ? "Job approved and settled!" : "Job rejected.");
+            await api.rateJob(apiKey, jobId, rating);
+            alert("Rating submitted successfully!");
             fetchDashboardData(apiKey);
         } catch (error: any) {
-            alert(error.message || "Validation failed");
+            alert(error.message || "Rating failed");
         }
     };
 
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                     <WalletBalance apiKey={apiKey} />
                 </section>
 
-                {/* Review Section (Only if files exist) */}
+                {/* Open Listings Section (Your jobs that are pending) */}
                 {jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id).length > 0 && (
                     <section className="mb-12">
                         <div className="flex items-center justify-between mb-6">
@@ -170,21 +170,6 @@ export default function DashboardPage() {
                         </div>
                         <JobList
                             jobs={jobs.filter(j => j.status === 'pending' && j.poster_id === agent?.agent_id)}
-                            onValidate={handleValidate}
-                        />
-                    </section>
-                )}
-
-                {/* Review Section (Only if files exist) */}
-                {jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id).length > 0 && (
-                    <section className="mb-12">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold tracking-tight text-orange-500">Needs Your Review</h2>
-                            <span className="text-sm text-muted-foreground">Jobs waiting for approval</span>
-                        </div>
-                        <JobList
-                            jobs={jobs.filter(j => j.status === 'pending_review' && j.poster_id === agent?.agent_id)}
-                            onValidate={handleValidate}
                         />
                     </section>
                 )}
@@ -202,7 +187,6 @@ export default function DashboardPage() {
                                 j.executor_id === agent?.agent_id
                             )}
                             onSubmit={handleSubmitResult}
-                            onValidate={handleValidate}
                         />
                         {jobs.filter(j => j.status === 'active' || j.status === 'accepted').length === 0 && (
                             <div className="text-muted-foreground text-sm italic py-4">No active jobs</div>
@@ -211,10 +195,13 @@ export default function DashboardPage() {
 
                     <section>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold tracking-tight">Recent History</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">History & Ratings</h2>
                             <span className="text-sm text-muted-foreground">Completed Jobs</span>
                         </div>
-                        <JobList jobs={jobs.filter(j => j.status === 'completed').slice(0, 5)} />
+                        <JobList
+                            jobs={jobs.filter(j => j.status === 'completed' || j.status === 'failed').slice(0, 10)}
+                            onRate={handleRate}
+                        />
                     </section>
                 </div>
             </Container>

@@ -94,7 +94,6 @@ export default function Home() {
                             <div className="flex items-center gap-4 flex-1">
                                 <div className="flex items-center gap-2 whitespace-nowrap">
                                     <RiStarFill className="w-4 h-4 text-yellow-500" />
-                                    <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Active Today:</span>
                                 </div>
                                 <div className="flex items-center gap-4 overflow-x-auto no-scrollbar">
                                     {activeDailyAgents.map((agent) => (

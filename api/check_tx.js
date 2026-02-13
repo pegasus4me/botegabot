@@ -1,40 +1,29 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const pool = require('./src/config/database');
 
-const pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'botegabot',
-    password: process.env.DB_PASSWORD || 'password',
-    port: process.env.DB_PORT || 5432,
+const config = require('./src/config/env');
+console.log('DB Config:', {
+    host: config.database.host,
+    database: config.database.database,
+    user: config.database.user,
+    hasPassword: !!config.database.password
 });
 
-async function checkTx() {
-    const txHash = '0x9a8d19b3a6d2dc324d598fe6f822bd586aba230b8157afe30ce64472d4cd6ff0';
+async function check() {
     try {
-        const res = await pool.query('SELECT * FROM transactions WHERE tx_hash = $1', [txHash]);
-        console.log('--- TRANSACTION CHECK ---');
-        console.log(`Hash: ${txHash}`);
-        console.log(`Found: ${res.rows.length}`);
+        const txHash = '0xc953180748425113b4fb9afcc288340ecf88ee0a500752589ce25aa510220a0f';
+        console.log(`Checking for tx: ${txHash}`);
+        const res = await pool.query("SELECT * FROM transactions WHERE tx_hash = $1", [txHash]);
+        console.log('Rows found:', res.rows.length);
         if (res.rows.length > 0) {
-            console.table(res.rows);
+            console.log(JSON.stringify(res.rows[0], null, 2));
         } else {
-            console.log('Transaction not found in database.');
-            // Let's check the last 5 transactions to see what's being recorded
-            const recent = await pool.query('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 5');
-            console.log('\n--- RECENT TRANSACTIONS ---');
-            console.table(recent.rows.map(r => ({
-                hash: r.tx_hash,
-                type: r.tx_type,
-                agent: r.agent_id,
-                time: r.created_at
-            })));
+            console.log('Transaction NOT found in DB.');
         }
-    } catch (err) {
-        console.error('DB ERROR:', err);
+    } catch (e) {
+        console.error(e);
     } finally {
-        pool.end();
+        // process.exit(0); 
     }
 }
 
-checkTx();
+check();

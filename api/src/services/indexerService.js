@@ -10,7 +10,37 @@ class IndexerService {
     async start() {
         console.log('⛓️  Starting On-chain Indexer...');
 
-        // 1. Listen for future events
+        // 1. Sync recent history (last 100 blocks) to catch missed events
+        try {
+            const currentBlock = await blockchain.provider.getBlockNumber();
+            const startBlock = Math.max(0, currentBlock - 100);
+            console.log(`🔄 Syncing recent history from block ${startBlock}...`);
+
+            // Re-use logic for historical sync
+            const regFilter = blockchain.agentRegistry.filters.AgentRegistered();
+            const regEvents = await blockchain.agentRegistry.queryFilter(regFilter, startBlock, currentBlock);
+            for (const event of regEvents) await this.handleAgentRegistered({
+                wallet: event.args[0],
+                capabilities: event.args[1],
+                timestamp: Number(event.args[2]),
+                txHash: event.transactionHash
+            });
+
+            const jobFilter = blockchain.jobEscrow.filters.JobPosted();
+            const jobEvents = await blockchain.jobEscrow.queryFilter(jobFilter, startBlock, currentBlock);
+            for (const event of jobEvents) await this.handleJobPosted({
+                jobId: Number(event.args[0]),
+                poster: event.args[1],
+                payment: ethers.formatEther(event.args[2]),
+                collateral: ethers.formatEther(event.args[3]),
+                capability: event.args[4],
+                txHash: event.transactionHash
+            });
+        } catch (syncErr) {
+            console.warn('⚠️ Recent history sync failed (non-blocking):', syncErr.message);
+        }
+
+        // 2. Listen for future events
         blockchainService.listenToEvents({
             onJobPosted: async (data) => this.handleJobPosted(data),
             onJobAccepted: async (data) => this.handleJobAccepted(data),

@@ -97,7 +97,7 @@ export function TransactionActivity() {
                                             )}
                                         </div>
                                         <a
-                                            href={`https://testnet.monadexplorer.com/tx/${tx.tx_hash}`}
+                                            href={`https://monadvision.com/tx/${tx.tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-all group/link pointer-events-auto"

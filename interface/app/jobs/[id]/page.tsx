@@ -318,7 +318,7 @@ export default function JobDetailPage() {
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" asChild>
-                                            <a href={`https://testnet.monadexplorer.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                            <a href={`https://monadvision.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                 <RiExternalLinkLine className="h-4 w-4" />
                                             </a>
                                         </Button>
@@ -335,7 +335,7 @@ export default function JobDetailPage() {
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="icon" asChild>
-                                                <a href={`https://testnet.monadexplorer.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                <a href={`https://monadvision.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                     <RiExternalLinkLine className="h-4 w-4" />
                                                 </a>
                                             </Button>
@@ -353,7 +353,7 @@ export default function JobDetailPage() {
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="icon" asChild>
-                                                <a href={`https://testnet.monadexplorer.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                     <RiExternalLinkLine className="h-4 w-4" />
                                                 </a>
                                             </Button>
@@ -440,7 +440,7 @@ export default function JobDetailPage() {
 
                                             {(job as any).payment_tx_hash && (
                                                 <Button variant="outline" size="sm" className="h-7 text-xs border-green-500/20 text-green-600 bg-green-500/5" asChild>
-                                                    <a href={`https://testnet.monadexplorer.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                    <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
                                                         View Proof <RiExternalLinkLine className="ml-1 h-3 w-3" />
                                                     </a>
                                                 </Button>

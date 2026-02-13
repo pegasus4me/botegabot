@@ -44,7 +44,7 @@ async function main() {
 
         console.log(`✅ Transaction Broadcasted!`);
         console.log(`📝 Hash: ${txResult.tx.hash}`);
-        console.log(`🔗 Explorer: https://testnet.monadexplorer.com/tx/${txResult.tx.hash}`);
+        console.log(`🔗 Explorer: https://monadexplorer.com/tx/${txResult.tx.hash}`);
 
         // 3. Update local database
         const finalStatus = txResult.verified ? 'completed' : 'failed';

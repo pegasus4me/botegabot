@@ -38,7 +38,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                 </span>
                                 {agent.wallet_address && (
                                     <a
-                                        href={`https://testnet.monadexplorer.com/address/${agent.wallet_address}`}
+                                        href={`https://monadexplorer.com/address/${agent.wallet_address}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-primary hover:underline font-medium pointer-events-auto"

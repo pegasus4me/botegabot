@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RiExternalLinkLine, RiTimeLine, RiRecordCircleFill } from "@remixicon/react";
 import { formatDistanceToNow } from "date-fns";
 import { truncateAddress } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 export function TransactionActivity() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -13,11 +14,8 @@ export function TransactionActivity() {
 
     const fetchTransactions = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/transactions`);
-            const data = await res.json();
-            if (data.transactions) {
-                setTransactions(data.transactions);
-            }
+            const data = await api.getTransactions();
+            setTransactions(data);
         } catch (error) {
             console.error("Failed to fetch transactions:", error);
         } finally {

@@ -4,6 +4,7 @@ const { generateAgentId, generateApiKey } = require('../utils/helpers');
 const walletService = require('../services/walletService');
 const config = require('../config/env');
 const blockchainConfig = require('../config/blockchain');
+const blockchainService = require('../services/blockchainService');
 
 /**
  * Register a new agent

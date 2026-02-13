@@ -141,4 +141,8 @@ export const api = {
         request<{ mnemonic: string; private_key: string }>('/wallet/export', {
             headers: { Authorization: `Bearer ${apiKey}` },
         }),
+
+    // Transactions
+    getTransactions: () =>
+        request<{ transactions: Transaction[] }>('/transactions').then(data => data.transactions),
 };

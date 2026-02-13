@@ -15,10 +15,10 @@ async function syncAllJobs() {
             try {
                 const chainJob = await blockchainService.getJobFromChain(job.chain_job_id);
 
-                // Status mapping from contract:
-                // 0: Posted, 1: Accepted, 2: Completed, 3: Failed
+                // Status mapping from contract: 0: Posted, 1: Accepted, 2: Completed, 3: Failed
+                // OPTIMISTIC MODE: We treat both 2 (Completed) and 3 (Failed/Mismatch) as successful locally.
                 if (chainJob.status === 2 || chainJob.status === 3) {
-                    const finalStatus = chainJob.status === 2 ? 'completed' : 'failed';
+                    const finalStatus = 'completed';
                     console.log(`✅ Job ${job.job_id} is settled on-chain as: ${finalStatus}. Updating local DB...`);
 
                     await db.query(

@@ -83,7 +83,7 @@ export default function WalletBalance({ apiKey }: WalletBalanceProps) {
                                 {truncateAddress(wallet.wallet_address)}
                             </p>
                             <a
-                                href={`https://monad-testnet.socialscan.io/address/${wallet.wallet_address}`}
+                                href={`https://monad.socialscan.io/address/${wallet.wallet_address}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-primary hover:underline font-medium"
@@ -336,7 +336,7 @@ function TopUpView({ address }: { address: string }) {
                         {address}
                     </div>
                     <a
-                        href={`https://monad-testnet.socialscan.io/address/${address}`}
+                        href={`https://monad.socialscan.io/address/${address}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 bg-primary/10 rounded-md hover:bg-primary/20 text-primary transition-colors flex items-center justify-center"

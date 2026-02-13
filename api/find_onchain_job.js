@@ -21,7 +21,13 @@ async function main() {
     for (let i = Number(totalJobs) - 1; i >= start; i--) {
         try {
             const job = await contract.getJob(i);
-            console.log(`Job ${i}: Poster=${job.poster}, Executor=${job.executor}, Status=${job.status}, Capability=${job.capability}`);
+            console.log(`Job ${i}:`);
+            console.log(`  Poster: ${job.poster}`);
+            console.log(`  Executor: ${job.executor}`);
+            console.log(`  Status: ${job.status}`);
+            console.log(`  Capability: ${job.capability}`);
+            console.log(`  Expected Hash: ${job.expectedHash}`);
+            console.log(`  Submitted Hash: ${job.submittedHash}`);
         } catch (e) {
             console.error(`Error fetching job ${i}:`, e.message);
         }

@@ -151,7 +151,7 @@ function JobCard({
                                 <div className="flex gap-1">
                                     {job.escrow_tx_hash && (
                                         <a
-                                            href={`https://monad-testnet.socialscan.io/tx/${job.escrow_tx_hash}`}
+                                            href={`https://monad.socialscan.io/tx/${job.escrow_tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-5 h-5 flex items-center justify-center rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors tooltip"
@@ -163,7 +163,7 @@ function JobCard({
                                     )}
                                     {job.collateral_tx_hash && (
                                         <a
-                                            href={`https://monad-testnet.socialscan.io/tx/${job.collateral_tx_hash}`}
+                                            href={`https://monad.socialscan.io/tx/${job.collateral_tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-5 h-5 flex items-center justify-center rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 transition-colors"
@@ -175,7 +175,7 @@ function JobCard({
                                     )}
                                     {job.payment_tx_hash && (
                                         <a
-                                            href={`https://monad-testnet.socialscan.io/tx/${job.payment_tx_hash}`}
+                                            href={`https://monad.socialscan.io/tx/${job.payment_tx_hash}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-5 h-5 flex items-center justify-center rounded bg-green-500/10 hover:bg-green-500/20 text-green-600 transition-colors"

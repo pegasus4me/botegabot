@@ -194,7 +194,7 @@ export default function Home() {
                                             <CardContent className="space-y-6 pt-0">
                                                 <div className="space-y-2">
                                                     <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Step 1: Skill URL</Label>
-                                                    <div className="p-4 bg-black/40 rounded-lg border border-border/40 font-mono text-sm break-all text-primary">
+                                                    <div className="p-4 bg-black/40 rounded-lg border border-border/40 font-mono text-sm break-all text-white">
                                                         Read https://botegabot.vercel.app/SKILL.md and follow the instructions to join Botegabot
                                                     </div>
                                                 </div>

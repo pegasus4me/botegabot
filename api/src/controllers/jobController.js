@@ -17,7 +17,6 @@ async function postJob(req, res) {
             payment_amount,
             collateral_required,
             deadline_minutes,
-            deadline_minutes,
             manual_verification = false // AUTONOMOUS MODE: Forced false
         } = req.body;
 
@@ -275,12 +274,16 @@ async function submitResult(req, res) {
 
         const job = jobResult.rows[0];
 
-        // Validation
+        // Check if caller is executor
         if (job.executor_id !== req.agentId) {
+            console.warn(`⚠️ Submit result blocked: Agent ${req.agentId} is not executor of job ${job_id}`);
             return res.status(403).json({ error: 'Only the executor can submit results' });
         }
 
+        console.log(`🔍 Job ${job_id} status: ${job.status}, Deadline: ${job.deadline}`);
+
         if (job.status !== 'accepted') {
+            console.warn(`⚠️ Job ${job_id} not accepted. Status: ${job.status}`);
             return res.status(400).json({ error: 'Job is not in accepted state' });
         }
 
@@ -293,9 +296,12 @@ async function submitResult(req, res) {
         const isOptimistic = !job.expected_output_hash || job.expected_output_hash === '0x';
         const hashMatch = isOptimistic || result_hash === job.expected_output_hash;
 
+        console.log(`🔐 Hash Verification: Expected=${job.expected_output_hash}, Actual=${result_hash}, Match=${hashMatch}, Optimistic=${isOptimistic}`);
+
         // AUTONOMOUS SETTLEMENT: No manual verification.
         // If hash matches (or is optimistic), job is completed immediately.
         const newStatus = hashMatch ? 'completed' : 'failed';
+        console.log(`🔄 Transitioning job ${job_id} to status: ${newStatus}`);
 
         // Update job locally first
         await db.query(
@@ -308,6 +314,8 @@ async function submitResult(req, res) {
        WHERE job_id = $4`,
             [result_hash, JSON.stringify(result), newStatus, job_id]
         );
+
+        console.log(`✅ Local job update successful. Status: ${newStatus}`);
 
         // Update agent stats immediately (optimistic local update)
         if (hashMatch) {
@@ -328,12 +336,14 @@ async function submitResult(req, res) {
          WHERE agent_id = $2`,
                 [job.payment_amount, job.poster_id]
             );
+            console.log(`✅ Agent stats updated (reputation/balance).`);
         } else {
             // Negative reputation for executor
             await db.query(
                 'UPDATE agents SET reputation_score = reputation_score - 10 WHERE agent_id = $1',
                 [req.agentId]
             );
+            console.log(`⚠️ Hash mismatch. Reduced reputation for agent ${req.agentId}`);
         }
 
         // Trigger On-chain Settlement (Async)
@@ -359,14 +369,17 @@ async function submitResult(req, res) {
                             [finalStatus, txResult.tx.hash, job_id]
                         );
 
-                        console.log(`✅ Job ${job_id} ${txResult.verified ? 'settled' : 'failed'} on-chain: ${txResult.tx.hash}`);
+                        console.log(`✅ On-chain settlement completed. Final Status: ${finalStatus}, Tx: ${txResult.tx.hash}`);
 
                         // Notify via WebSocket
                         const wsService = require('../services/websocketService');
                         wsService.notifyPaymentReceived(job, job.payment_amount, txResult.verified);
                         wsService.notifyJobCompleted(job, txResult.verified);
                     })
-                    .catch(err => console.error(`❌ Failed to submit result on-chain:`, err));
+                    .catch(err => {
+                        console.error(`❌ Failed to submit result on-chain for job ${job_id}:`, err);
+                        // Optionally revert status or mark as 'settlement_failed'
+                    });
             }
         } else {
             // Notify via WebSocket for off-chain jobs

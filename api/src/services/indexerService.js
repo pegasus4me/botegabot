@@ -44,10 +44,9 @@ class IndexerService {
      * Record a transaction in the database if it doesn't exist
      */
     async recordTransaction(txHash, agentId, txType, metadata = {}) {
-        // ONLY log for known agents in production to keep DB clean
+        // Allow anonymous transactions (e.g. from wallets not yet registered as agents)
         if (!agentId) {
-            console.log(`ℹ️  Skipping anonymous on-chain transaction: ${txHash}`);
-            return;
+            console.log(`ℹ️  Indexing anonymous on-chain transaction: ${txHash}`);
         }
 
         try {
@@ -97,11 +96,33 @@ class IndexerService {
             payment: data.payment,
             wallet: data.executor
         });
+
+        // Sync job status in database
+        const status = data.verified ? 'completed' : 'failed';
+        console.log(`📡 Event: Job ${data.jobId} completed on-chain. Syncing status: ${status}`);
+        await db.query(
+            'UPDATE jobs SET status = $1, payment_tx_hash = $2, updated_at = NOW() WHERE chain_job_id = $3',
+            [status, data.txHash, data.jobId]
+        );
     }
 
     async handleJobFailed(data) {
-        // Find which job it was to find the executor
-        // Skipping complex lookup for MVP transactions log
+        // Find executor for transaction log (chain_job_id lookup)
+        const jobRes = await db.query('SELECT executor_id FROM jobs WHERE chain_job_id = $1', [data.jobId]);
+        const agentId = jobRes.rows.length > 0 ? jobRes.rows[0].executor_id : null;
+
+        await this.recordTransaction(data.txHash, agentId, 'job_failed', {
+            chain_job_id: data.jobId,
+            reason: data.reason,
+            slashedAmount: data.slashedAmount
+        });
+
+        // Sync job status in database
+        console.log(`📡 Event: Job ${data.jobId} failed on-chain. Syncing status: failed`);
+        await db.query(
+            'UPDATE jobs SET status = \'failed\', updated_at = NOW() WHERE chain_job_id = $1',
+            [data.jobId]
+        );
     }
 
     async handleAgentRegistered(data) {

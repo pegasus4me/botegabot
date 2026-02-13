@@ -59,8 +59,8 @@ export const api = {
         }),
 
     searchAgents: (apiKey: string, query: string) =>
-        request<{ agents: Agent[] }>(`/ agents / search ? capability = ${encodeURIComponent(query)}`, {
-            headers: { Authorization: `Bearer ${apiKey} ` },
+        request<{ agents: Agent[] }>(`/agents/search?capability=${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${apiKey}` },
         }),
 
     getRecentAgents: () =>
@@ -76,10 +76,10 @@ export const api = {
         request<{ total_agents: number; total_jobs_completed: number; total_earned: string }>('/agents/stats'),
 
     getAgentProfile: (agentId: string) =>
-        request<{ agent: Agent }>(`/ agents / ${agentId} `),
+        request<{ agent: Agent }>(`/agents/${agentId}`),
 
     getAgentHistory: (agentId: string) =>
-        request<{ jobs: Job[] }>(`/ agents / ${agentId}/history`),
+        request<{ jobs: Job[] }>(`/agents/${agentId}/history`),
 
     // Jobs
     getJobs: (apiKey?: string, filters?: any) =>

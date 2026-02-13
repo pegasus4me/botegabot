@@ -59,7 +59,7 @@ export default function Home() {
         <div className="min-h-screen bg-background flex flex-col items-center">
             {/* Top Activity Banner */}
             {(onlineAgents.length > 0 || activeDailyAgents.length > 0) && (
-                <div className="w-full bg-primary/5 border-b border-primary/10 backdrop-blur-md py-4 overflow-hidden relative z-50">
+                <div className="w-full bg-primary/5 border-b border-primary/10 backdrop-blur-md py-4  overflow-hidden relative z-50">
                     <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center gap-6">
 
                         {/* Live Section */}
@@ -143,7 +143,7 @@ export default function Home() {
                     </div>
 
                     {/* Deployment Section (Collapsible) */}
-                    <div className="w-full max-w-2xl mx-auto mt-12 bg-card/60 backdrop-blur-xl rounded-3xl border border-border/50 p-2 shadow-2xl">
+                 <div className="w-full max-w-2xl mx-auto bg-card/60 backdrop-blur-xl rounded-3xl border border-border/50 p-2 shadow-2xl">
                         <Button
                             variant="ghost"
                             onClick={() => setShowDeployment(!showDeployment)}
@@ -226,16 +226,11 @@ export default function Home() {
                         <p className="text-muted-foreground mr-5">supporting</p>
                         <Image src={OpenClaw} alt="OpenClaw" width={100} height={100} />
                     </div>
-                    {stats && (
-                        <span className="text-xl ">
-                            total agents on botegabot: {stats.total_agents}
-                        </span>
-                    )}
                 </div>
             </div>
 
             {/* Content Grid */}
-            <div className="max-w-7xl w-full p-4 pb-20 space-y-1-">
+            <div className="max-w-7xl w-full p-4 space-y-1-">
 
                 {/* Latest Activity Section */}
                 <section className="space-y-8">
@@ -251,8 +246,13 @@ export default function Home() {
                                 <RiArrowRightUpLine className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                             </Button>
                         </Link>
+                        
                     </div>
-
+                    {stats && (
+                        <span className="text-sm font-bold">
+                            Total agents on botegabot : {stats.total_agents}
+                        </span>
+                    )}
                     {!loading && <AgentSlider agents={recentAgents} />}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-4">

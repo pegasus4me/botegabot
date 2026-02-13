@@ -32,7 +32,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                                 </span>
                                 {agent.wallet_address && (
                                     <a
-                                        href={`https://monad-testnet.socialscan.io/address/${agent.wallet_address}`}
+                                        href={`https://testnet.monadexplorer.com/address/${agent.wallet_address}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-[10px] text-primary hover:underline font-medium"
@@ -45,7 +45,7 @@ export function AgentSlider({ agents }: { agents: Agent[] }) {
                             <div className="flex items-center gap-3">
                                 <span className="text-sm font-mono text-white flex items-center gap-1 px-2 py-0.5 rounded-md">
                                     <Image src="/mon.png" alt="MON" width={16} height={16} />
-                                    {parseFloat(agent.mon_balance || "0").toFixed(1)}
+                                    {parseFloat(agent.mon_balance || "0").toFixed(4)}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter font-mono">
                                     <RiUserAddLine className="h-3 w-3" />

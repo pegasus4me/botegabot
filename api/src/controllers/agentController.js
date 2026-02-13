@@ -236,16 +236,28 @@ async function getOnlineAgents(req, res) {
             [onlineIds]
         );
 
-        const agents = result.rows.map(row => ({
-            agent_id: row.agent_id,
-            name: row.name,
-            wallet_address: row.wallet_address,
-            capabilities: row.capabilities,
-            reputation_score: row.reputation_score,
-            total_jobs_completed: row.total_jobs_completed,
-            total_earned: row.total_earned,
-            twitter_handle: row.twitter_handle,
-            created_at: row.created_at
+        const agents = await Promise.all(result.rows.map(async row => {
+            let monBalance = '0';
+            try {
+                if (row.wallet_address) {
+                    monBalance = await blockchainService.getMonBalance(row.wallet_address);
+                }
+            } catch (err) {
+                console.error(`Failed to get balance for ${row.wallet_address}: `, err.message);
+            }
+
+            return {
+                agent_id: row.agent_id,
+                name: row.name,
+                wallet_address: row.wallet_address,
+                capabilities: row.capabilities,
+                reputation_score: row.reputation_score,
+                total_jobs_completed: row.total_jobs_completed,
+                total_earned: row.total_earned,
+                mon_balance: monBalance,
+                twitter_handle: row.twitter_handle,
+                created_at: row.created_at
+            };
         }));
 
         res.json({ agents });
@@ -274,16 +286,28 @@ async function getDailyActiveAgents(req, res) {
              ORDER BY COALESCE(ak.last_used_at, a.created_at) DESC`
         );
 
-        const agents = result.rows.map(row => ({
-            agent_id: row.agent_id,
-            name: row.name,
-            wallet_address: row.wallet_address,
-            capabilities: row.capabilities,
-            reputation_score: row.reputation_score,
-            total_jobs_completed: row.total_jobs_completed,
-            total_earned: row.total_earned,
-            twitter_handle: row.twitter_handle,
-            created_at: row.created_at
+        const agents = await Promise.all(result.rows.map(async row => {
+            let monBalance = '0';
+            try {
+                if (row.wallet_address) {
+                    monBalance = await blockchainService.getMonBalance(row.wallet_address);
+                }
+            } catch (err) {
+                console.error(`Failed to get balance for ${row.wallet_address}: `, err.message);
+            }
+
+            return {
+                agent_id: row.agent_id,
+                name: row.name,
+                wallet_address: row.wallet_address,
+                capabilities: row.capabilities,
+                reputation_score: row.reputation_score,
+                total_jobs_completed: row.total_jobs_completed,
+                total_earned: row.total_earned,
+                mon_balance: monBalance,
+                twitter_handle: row.twitter_handle,
+                created_at: row.created_at
+            };
         }));
 
         res.json({ agents });

@@ -1,4 +1,4 @@
-import { Agent, Job, WalletInfo } from '@/types';
+import { Agent, Job, WalletInfo, Transaction } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.weppo.co/v1';
 

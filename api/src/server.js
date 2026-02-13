@@ -8,6 +8,7 @@ const config = require('./config/env');
 const agentRoutes = require('./routes/agents');
 const jobRoutes = require('./routes/jobs');
 const walletRoutes = require('./routes/wallet');
+const transactionRoutes = require('./routes/transactions');
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (e.g. Nginx/Vercel)
@@ -66,6 +67,10 @@ const server = app.listen(PORT, () => {
 // Initialize WebSocket server
 const wsService = require('./services/websocketService');
 wsService.initialize(server);
+
+// Initialize On-chain Indexer
+const indexerService = require('./services/indexerService');
+indexerService.start();
 
 module.exports = app;
 

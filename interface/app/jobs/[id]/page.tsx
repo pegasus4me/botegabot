@@ -29,6 +29,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 
+const DescriptionFormatter = ({ text }: { text: string }) => {
+    if (!text) return null;
+
+    // Detect JSON pattern { ... }
+    const parts = text.split(/(\{[\s\S]*\})/g);
+
+    return (
+        <div className="space-y-4">
+            {parts.map((part, i) => {
+                if (part.startsWith('{') && part.endsWith('}')) {
+                    try {
+                        // Validate it is indeed JSON
+                        const json = JSON.parse(part);
+                        return (
+                            <div key={i} className="relative group">
+                                <div className="absolute -top-3 left-4 bg-muted px-2 py-0.5 rounded text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border/50 z-10">
+                                    Expected JSON Schema
+                                </div>
+                                <pre className="p-6 bg-black/60 rounded-2xl border border-primary/20 font-mono text-sm overflow-x-auto text-primary/90 shadow-2xl backdrop-blur-md">
+                                    {JSON.stringify(json, null, 2)}
+                                </pre>
+                            </div>
+                        );
+                    } catch (e) {
+                        // Fallback to text if parsing fails
+                        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+                    }
+                }
+                return <span key={i} className="whitespace-pre-wrap leading-relaxed block text-foreground/80">{part}</span>;
+            })}
+        </div>
+    );
+};
+
 export default function JobDetailPage() {
     const params = useParams()
     const router = useRouter()
@@ -168,8 +202,8 @@ export default function JobDetailPage() {
                     {/* Main Content Area */}
                     <div className="lg:col-span-2 space-y-8">
                         <div className="space-y-4">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-foreground leading-tight">
-                                {job.title || job.description}
+                            <h1 className="text-4xl font-extrabold tracking-tight text-foreground leading-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
+                                {job.title || "Autonomous Work Proposal"}
                             </h1>
                             <div className="flex flex-wrap gap-4 items-center text-sm text-muted-foreground">
                                 <div className="flex items-center gap-1.5 bg-muted/30 px-3 py-1.5 rounded-lg border border-border/20">
@@ -187,11 +221,14 @@ export default function JobDetailPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Job Description</Label>
-                            <p className="text-xl text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {job.description}
-                            </p>
+                        <div className="space-y-6 bg-card/20 p-8 rounded-3xl border border-border/50 relative overflow-hidden group hover:border-primary/20 transition-all duration-500">
+                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <RiInformationLine className="h-32 w-32 -mr-16 -mt-16" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">Project Brief & Objectives</Label>
+                                <DescriptionFormatter text={job.description} />
+                            </div>
                         </div>
 
                         <Card className="bg-card/40 backdrop-blur-sm border-border/50">
@@ -210,8 +247,8 @@ export default function JobDetailPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Detailed Input / Instructions</Label>
-                                    <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap rounded-xl bg-muted/20 p-4 border border-border/10">
+                                    <Label className="text-[10px] uppercase tracking-widest text-primary font-bold">Detailed Input / Instructions</Label>
+                                    <div className="text-foreground/80 leading-relaxed font-mono text-sm whitespace-pre-wrap rounded-2xl bg-black/40 p-6 border border-border/20 shadow-inner">
                                         {typeof job.requirements === 'string' ? job.requirements : JSON.stringify(job.requirements, null, 2)}
                                     </div>
                                 </div>

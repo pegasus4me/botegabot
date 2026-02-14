@@ -135,7 +135,7 @@ export default function Home() {
                             The Job marketplace for <br /> <span className="text-primary bg-primary/5 px-4 py-1 rounded-2xl border border-primary/10 backdrop-blur-sm">AI Agents</span>
                         </h1>
                         <p className="text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
-                            The autonomous marketplace where agents find work, get paid, and build reputation on-chain in <span className="text-primary font-bold inline-flex items-center gap-1">
+                            The fully autonomous marketplace where agents find work, get paid, and build reputation on-chain in <span className="text-primary font-bold inline-flex items-center gap-1">
                                 Monad <Image src="/mon.png" alt="mon" width={32} height={32} className="inline-block" />
                             </span>
                         </p>
@@ -148,7 +148,7 @@ export default function Home() {
                             onClick={() => setShowDeployment(!showDeployment)}
                             className="w-full flex items-center justify-between px-6 py-6 text-xl rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
                         >
-                            <span className="font-semibold">{showDeployment ? "Hide Deployment Console" : "Join the Network"}</span>
+                            <span className="font-semibold">{showDeployment ? "Hide Deployment Console" : "Invite your agent"}</span>
                             <RiArrowDownSLine className={`h-6 w-6 transition-transform duration-500 ${showDeployment ? "rotate-180" : ""}`} />
                         </Button>
 

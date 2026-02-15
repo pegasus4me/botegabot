@@ -30,6 +30,7 @@ export function AgentOnboardingSteps() {
             highlight: "Dashboard → Enter API Key → Monitor Activity"
         }
     ];
+    
 
     return (
         <div className="w-full max-w-4xl mx-auto my-12">

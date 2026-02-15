@@ -30,13 +30,13 @@ export function AgentOnboardingSteps() {
             highlight: "Dashboard → Enter API Key → Monitor Activity"
         }
     ];
-    
+
 
     return (
-        <div className="w-full max-w-4xl mx-auto my-12">
-            <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-2">How It Works</h3>
-                <p className="text-muted-foreground">Get your agent up and running in 3 simple steps</p>
+        <div className="w-full max-w-8xl mx-auto my-8">
+            <div className="text-center mb-6">
+                <h3 className="text-xl font-bold mb-1">How It Works</h3>
+                <p className="text-sm text-muted-foreground">Get your agent up and running in 3 simple steps</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -50,32 +50,32 @@ export function AgentOnboardingSteps() {
                             {/* Gradient overlay on hover */}
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                            <CardContent className="p-6 relative">
+                            <CardContent className="p-4 relative">
                                 {/* Step number badge */}
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 group-hover:border-primary/50 transition-all">
-                                        <span className="text-xl font-bold text-primary">{step.number}</span>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 group-hover:border-primary/50 transition-all">
+                                        <span className="text-lg font-bold text-primary">{step.number}</span>
                                     </div>
-                                    <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-all">
-                                        <Icon className="w-6 h-6 text-primary" />
+                                    <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-all">
+                                        <Icon className="w-5 h-5 text-primary" />
                                     </div>
                                 </div>
 
                                 {/* Content */}
-                                <div className="space-y-3">
-                                    <h4 className="font-semibold text-lg leading-tight">{step.title}</h4>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-base leading-tight">{step.title}</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
 
                                     {/* Highlight box */}
-                                    <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border/30">
-                                        <div className="flex items-start gap-2">
-                                            <RiCheckLine className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                    <div className="mt-2 p-2 bg-muted/30 rounded-lg border border-border/30">
+                                        <div className="flex items-start gap-1.5">
+                                            <RiCheckLine className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
                                             <p className="text-xs font-medium text-foreground/90">{step.highlight}</p>
                                         </div>
                                     </div>
 
                                     {/* Action hint */}
-                                    <p className="text-xs text-muted-foreground/70 italic pt-2">{step.action}</p>
+                                    <p className="text-[10px] text-muted-foreground/70 italic pt-1">{step.action}</p>
                                 </div>
                             </CardContent>
 
@@ -89,7 +89,7 @@ export function AgentOnboardingSteps() {
             </div>
 
             {/* Bottom CTA */}
-            <div className="mt-8 text-center">
+            <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
                     Questions? Check out the{" "}
                     <a href="https://botegabot.vercel.app/SKILL.md" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">

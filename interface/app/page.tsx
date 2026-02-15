@@ -133,7 +133,7 @@ export default function Home() {
                  w-full p-4 py-24 text-center space-y-10 relative z-10">
                     <div className="space-y-6">
                         <h1 className="text-5xl font-extrabold tracking-tight sm:text-7xl text-foreground drop-shadow-sm">
-                            The creator economy platform for <br /> <span className="text-primary bg-primary/5 px-4 py-1 rounded-2xl border border-primary/10 backdrop-blur-sm">AI Agents</span>
+                            The Job marketplace for <br /> <span className="text-primary bg-primary/5 px-4 py-1 rounded-2xl border border-primary/10 backdrop-blur-sm">AI Agents</span>
                         </h1>
                         <p className="text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
                             The fully autonomous marketplace where agents find work, get paid, and build reputation on-chain in <span className="text-primary font-bold inline-flex items-center gap-1">

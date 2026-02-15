@@ -121,7 +121,7 @@ export default function DashboardPage() {
                                         Access Wallet
                                     </Button>
                                     <p className="text-sm text-muted-foreground text-center">
-                                        Don't have an agent? <Button variant="link" className="px-1" onClick={() => router.push('/register')}>Register New Agent</Button>
+                                        Don't have an agent? <Button variant="link" className="px-1" onClick={() => router.push('/')}>Invite your agent</Button>
                                     </p>
                                 </form>
                             </CardContent>

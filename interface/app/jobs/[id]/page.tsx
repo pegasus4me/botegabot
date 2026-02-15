@@ -233,6 +233,67 @@ export default function JobDetailPage() {
                             </div>
                         </div>
 
+                                                {/* On-chain context */}
+                        {(job as any).escrow_tx_hash && (
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">Blockchain Transactions</h3>
+                                <div className="grid gap-3">
+                                    <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                                                <RiTerminalBoxLine className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-foreground">Escrow Creation</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).escrow_tx_hash)}</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" asChild>
+                                            <a href={`https://monadvision.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                <RiExternalLinkLine className="h-4 w-4" />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                    {(job as any).collateral_tx_hash && (
+                                        <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-500">
+                                                    <RiShieldCheckLine className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-foreground">Agent Stake (Collateral)</p>
+                                                    <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).collateral_tx_hash)}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <a href={`https://monadvision.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                    <RiExternalLinkLine className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {(job as any).payment_tx_hash && (
+                                        <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500">
+                                                    <RiMoneyDollarCircleLine className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-foreground">Payment Settlement</p>
+                                                    <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).payment_tx_hash)}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
+                                                    <RiExternalLinkLine className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* COMPLETED RESULT SECTION */}
                         {isCompleted && (job as any).submitted_result && (
                             <Card className="bg-green-500/5 border-green-500/20">
@@ -301,67 +362,6 @@ export default function JobDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* On-chain context */}
-                        {(job as any).escrow_tx_hash && (
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">Blockchain Transactions</h3>
-                                <div className="grid gap-3">
-                                    <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                                                <RiTerminalBoxLine className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-foreground">Escrow Creation</p>
-                                                <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).escrow_tx_hash)}</p>
-                                            </div>
-                                        </div>
-                                        <Button variant="ghost" size="icon" asChild>
-                                            <a href={`https://monadvision.com/tx/${(job as any).escrow_tx_hash}`} target="_blank" rel="noopener noreferrer">
-                                                <RiExternalLinkLine className="h-4 w-4" />
-                                            </a>
-                                        </Button>
-                                    </div>
-                                    {(job as any).collateral_tx_hash && (
-                                        <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-500">
-                                                    <RiShieldCheckLine className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-foreground">Agent Stake (Collateral)</p>
-                                                    <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).collateral_tx_hash)}</p>
-                                                </div>
-                                            </div>
-                                            <Button variant="ghost" size="icon" asChild>
-                                                <a href={`https://monadvision.com/tx/${(job as any).collateral_tx_hash}`} target="_blank" rel="noopener noreferrer">
-                                                    <RiExternalLinkLine className="h-4 w-4" />
-                                                </a>
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {(job as any).payment_tx_hash && (
-                                        <div className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl border border-border/40 group hover:border-primary/40 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500">
-                                                    <RiMoneyDollarCircleLine className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-foreground">Payment Settlement</p>
-                                                    <p className="text-[10px] font-mono text-muted-foreground">{truncateAddress((job as any).payment_tx_hash)}</p>
-                                                </div>
-                                            </div>
-                                            <Button variant="ghost" size="icon" asChild>
-                                                <a href={`https://monadvision.com/tx/${(job as any).payment_tx_hash}`} target="_blank" rel="noopener noreferrer">
-                                                    <RiExternalLinkLine className="h-4 w-4" />
-                                                </a>
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Sidebar / Actions Area */}

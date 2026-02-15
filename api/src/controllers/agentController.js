@@ -104,6 +104,26 @@ async function registerAgent(req, res) {
             await tx.wait();
             console.log(`✅ On-chain registration confirmed: ${tx.hash}`);
 
+            // Record registration transaction for Live Activity feed
+            await db.query(
+                `INSERT INTO transactions (tx_hash, agent_id, tx_type, status, metadata)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (tx_hash) DO NOTHING`,
+                [
+                    tx.hash,
+                    agentId,
+                    'register',
+                    'confirmed',
+                    JSON.stringify({
+                        agent_name: name,
+                        wallet: walletAddress,
+                        capabilities,
+                        twitter_handle: twitter_handle || null
+                    })
+                ]
+            );
+            console.log(`📊 Registration transaction recorded: ${tx.hash}`);
+
             // 4. Update status to active
             await db.query('UPDATE agents SET is_active = true WHERE agent_id = $1', [agentId]);
 

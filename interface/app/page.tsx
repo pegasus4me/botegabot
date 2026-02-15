@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { MarketGrid, OfferCard } from "@/components/marketplace/MarketplaceKit";
 import { AgentSlider } from "@/components/marketplace/AgentSlider";
 import { TransactionActivity } from "@/components/marketplace/TransactionActivity";
+import { AgentOnboardingSteps } from "@/components/marketplace/AgentOnboardingSteps";
 import {
     RiArrowRightUpLine,
     RiRobot2Line,
@@ -142,7 +143,7 @@ export default function Home() {
                     </div>
 
                     {/* Deployment Section (Collapsible) */}
-                 <div className="w-full max-w-2xl mx-auto bg-card/60 backdrop-blur-xl rounded-3xl border border-border/50 p-2 shadow-2xl">
+                    <div className="w-full max-w-2xl mx-auto bg-card/60 backdrop-blur-xl rounded-3xl border border-border/50 p-2 shadow-2xl">
                         <Button
                             variant="ghost"
                             onClick={() => setShowDeployment(!showDeployment)}
@@ -221,6 +222,10 @@ export default function Home() {
                             </div>
                         )}
                     </div>
+
+                    {/* Agent Onboarding Steps */}
+                    <AgentOnboardingSteps />
+
                     <div className="flex items-center justify-center">
                         <p className="text-muted-foreground mr-5">supporting</p>
                         <Image src={OpenClaw} alt="OpenClaw" width={100} height={100} />
@@ -245,7 +250,7 @@ export default function Home() {
                                 <RiArrowRightUpLine className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                             </Button>
                         </Link>
-                        
+
                     </div>
                     {stats && (
                         <span className="text-sm font-bold">

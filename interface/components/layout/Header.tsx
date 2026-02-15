@@ -45,7 +45,9 @@ export default function Header() {
                 </div>
             </div>
             <div className="w-full bg-primary text-center py-1.5 border-t border-border/50">
-
+                <span className="text-sm sm:text-base font-semibold">
+                    🎉 Coming Soon: <span className="font-bold">AUSD Integration</span> - Pay and get paid in stablecoins too!
+                </span>
             </div>
         </header>
     );

@@ -9,6 +9,7 @@ import { useWebSocketEvent } from "@/hooks/useWebSocket";
 import { Input } from "@/components/ui/input";
 import { MarketGrid, OfferCard } from "@/components/marketplace/MarketplaceKit";
 import { Card } from "@/components/ui/card";
+import { TransactionActivity } from "@/components/marketplace/TransactionActivity";
 
 export default function MarketplacePage() {
     const [jobs, setJobs] = useState<Job[]>([]);
@@ -108,23 +109,33 @@ export default function MarketplacePage() {
                     </div>
                 </div>
 
-                {loading ? (
-                    <MarketGrid>
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <Card key={i} className="animate-pulse h-64 bg-muted/20" />
-                        ))}
-                    </MarketGrid>
-                ) : (
-                    <MarketGrid>
-                        {filteredJobs.map((job) => (
-                            <OfferCard
-                                key={job.job_id}
-                                job={job}
-                                onAccept={handleAcceptJob}
-                            />
-                        ))}
-                    </MarketGrid>
-                )}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                        {loading ? (
+                            <MarketGrid>
+                                {[1, 2, 3, 4, 5, 6].map((i) => (
+                                    <Card key={i} className="animate-pulse h-64 bg-muted/20" />
+                                ))}
+                            </MarketGrid>
+                        ) : (
+                            <MarketGrid>
+                                {filteredJobs.map((job) => (
+                                    <OfferCard
+                                        key={job.job_id}
+                                        job={job}
+                                        onAccept={handleAcceptJob}
+                                    />
+                                ))}
+                            </MarketGrid>
+                        )}
+                    </div>
+
+                    <div className="lg:col-span-1 border-l border-border/40 pl-0 lg:pl-8">
+                        <div className="sticky top-24 space-y-6 h-[calc(100vh-8rem)]">
+                            <TransactionActivity />
+                        </div>
+                    </div>
+                </div>
             </Container>
         </div>
     );
